@@ -3,6 +3,7 @@ package com.rafalzajfert.restapi.sample;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -31,49 +32,50 @@ public class MainActivity extends AppCompatActivity {
         RestApi.execute(new GetVersion(), new ResponseListener<Version>() {
             @Override
             public void onSuccess(Version result) {
+                Logger.error("onSuccess");
                 Logger.debug(result);
             }
 
             @Override
             public void onFailed(RequestException e) {
-                Logger.error(e);
+                Logger.error(e.toString());
             }
         });
 
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    Version version = RestApi.executeSync(new GetVersion());
-                    Logger.debug(version);
-                } catch (RequestException e) {
-                    Logger.error(e);
-                }
-            }
-        }).start();
+//        new Thread(new Runnable() {
+//            @Override
+//            public void run() {
+//                try {
+//                    Version version = RestApi.executeSync(new GetVersion());
+//                    Logger.debug(version);
+//                } catch (RequestException e) {
+//                    Logger.error(e);
+//                }
+//            }
+//        }).start();
 
-
-
-        RestApi.pool(RestApi.THREAD_POOL_EXECUTOR)
-                .add(new GetVersion(), 1)
-                .add(new GetVersion(), 2)
-                .add(new GetVersion(), 3)
-                .execute(new ResponsePoolListener() {
-                    @Override
-                    public void onTaskSuccess(Object result, int requestCode) {
-
-                    }
-
-                    @Override
-                    public void onSuccess(@NonNull Map<Integer, Object> result) {
-
-                    }
-
-                    @Override
-                    public boolean onFailed(RequestException e, int requestCode) {
-                        return false;
-                    }
-                });
+//
+//
+//        RestApi.pool(RestApi.THREAD_POOL_EXECUTOR)
+//                .add(new GetVersion(), 1)
+//                .add(new GetVersion(), 2)
+//                .add(new GetVersion(), 3)
+//                .execute(new ResponsePoolListener() {
+//                    @Override
+//                    public void onTaskSuccess(Object result, int requestCode) {
+//
+//                    }
+//
+//                    @Override
+//                    public void onSuccess(@NonNull Map<Integer, Object> result) {
+//
+//                    }
+//
+//                    @Override
+//                    public boolean onFailed(RequestException e, int requestCode) {
+//                        return false;
+//                    }
+//                });
 
 //TODO next futures
 //        RestApi.get(new TypeReference<List<User>>() {}, "v1", "user")

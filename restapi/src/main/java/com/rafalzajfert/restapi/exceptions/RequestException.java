@@ -129,6 +129,7 @@ public class RequestException extends ExecutionException {
 
     /**
      * Http response code
+     *
      * @see #getErrorCode()
      */
     public int getResponseCode() {
@@ -152,6 +153,7 @@ public class RequestException extends ExecutionException {
 
     /**
      * Custom error code.
+     *
      * @see #getResponseCode()
      */
     public int getErrorCode() {
@@ -167,8 +169,8 @@ public class RequestException extends ExecutionException {
 
     @Override
     public String toString() {
-        StringBuilder builder = new StringBuilder();
-        builder.append(mErrorCode).append(" (").append(mResponseCode).append(") ");
+        StringBuilder builder = new StringBuilder(getClass().getName());
+        builder.append(" ").append(mErrorCode).append("[").append(mResponseCode).append("] ");
         if (!TextUtils.isEmpty(mName)) {
             builder.append(mName);
         }
@@ -180,6 +182,6 @@ public class RequestException extends ExecutionException {
             builder.append("\n");
             builder.append(entry.getKey()).append(": ").append(Arrays.toString(entry.getValue()));
         }
-        return builder.toString();
+        return builder.toString() + "\n" + super.toString();
     }
 }

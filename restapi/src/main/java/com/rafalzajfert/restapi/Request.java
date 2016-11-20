@@ -342,7 +342,7 @@ public abstract class Request<T> {
     /**
      * Set api method url based on {@link RestApi.Config}
      *
-     * @param urlSegments path segments e.g: <br/>
+     * @param urlSegments path segments e.g: <p>
      *                    for address http://example.com/get/user  this method should be invoked: {@code setUrlSegments("get", "user");}
      */
     protected void setUrlSegments(String... urlSegments) {

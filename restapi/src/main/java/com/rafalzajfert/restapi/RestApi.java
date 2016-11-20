@@ -63,9 +63,6 @@ public class RestApi {
         return new PoolBuilder(executor);
     }
 
-    /**
-     * @hide
-     */
     @IntDef({THREAD_POOL_EXECUTOR, SERIAL_EXECUTOR})
     @Retention(RetentionPolicy.SOURCE)
     public @interface Executor {
@@ -142,7 +139,7 @@ public class RestApi {
 
         /**
          * Timeout for the connections.
-         * A value of 0 means no timeout, otherwise values must be between 1 and Integer.MAX_VALUE milliseconds.<br/>
+         * A value of 0 means no timeout, otherwise values must be between 1 and Integer.MAX_VALUE milliseconds.<p>
          * default: 1min
          */
         public int getTimeout() {
@@ -151,7 +148,7 @@ public class RestApi {
 
         /**
          * Sets the default connect timeout for the connections.
-         * A value of 0 means no timeout, otherwise values must be between 1 and Integer.MAX_VALUE milliseconds.<br/>
+         * A value of 0 means no timeout, otherwise values must be between 1 and Integer.MAX_VALUE milliseconds.<p>
          * default: 1min
          */
         public Config setTimeout(int timeout) {
@@ -197,7 +194,7 @@ public class RestApi {
 
         /**
          * Port for communication with rest api
-         * </p>
+         * <p>
          * default: 80 if {@code scheme.equals("http")}, 443 if {@code scheme.equals("https")} and -1
          * otherwise.
          */
@@ -207,7 +204,7 @@ public class RestApi {
 
         /**
          * Port for communication with rest api
-         * </p>
+         * <p>
          * default: 80 if {@code scheme.equals("http")}, 443 if {@code scheme.equals("https")} and -1
          * otherwise.
          */
@@ -254,7 +251,7 @@ public class RestApi {
 
         /**
          * Response deserializer
-         * </p>
+         * <p>
          * default: {@link com.rafalzajfert.restapi.serialization.JsonDeserializer JsonDeserializer}
          */
         @NonNull
@@ -265,17 +262,18 @@ public class RestApi {
 
         /**
          * Response deserializer
-         * </p>
+         * <p>
          * default: {@link com.rafalzajfert.restapi.serialization.JsonDeserializer JsonDeserializer}
          */
-        public void setDeserializer(@NonNull Deserializer deserializer) {
+        public Config setDeserializer(@NonNull Deserializer deserializer) {
             mDeserializer = deserializer;
+            return this;
         }
 
 
         /**
          * Request parameters serializer
-         * </p>
+         * <p>
          * default: {@link com.rafalzajfert.restapi.serialization.JacksonSerializer JacksonSerializer}
          */
         @NonNull
@@ -286,16 +284,17 @@ public class RestApi {
 
         /**
          * Request parameters serializer
-         * </p>
+         * <p>
          * default: {@link com.rafalzajfert.restapi.serialization.JacksonSerializer JacksonSerializer}
          */
-        public void setSerializer(@NonNull Serializer serializer) {
+        public Config setSerializer(@NonNull Serializer serializer) {
             mSerializer = serializer;
+            return this;
         }
 
         /**
          * Authorization service
-         * </p>
+         * <p>
          * default: null
          */
         @Nullable
@@ -305,16 +304,17 @@ public class RestApi {
 
         /**
          * Authorization service
-         * </p>
+         * <p>
          * default: null
          */
-        public void setRestAuthorizationService(RestAuthorizationService authorizationService) {
+        public Config setRestAuthorizationService(RestAuthorizationService authorizationService) {
             mRestAuthorizationService = authorizationService;
+            return this;
         }
 
         /**
          * Error response deserializer
-         * </p>
+         * <p>
          * default: {@link com.rafalzajfert.restapi.serialization.JsonErrorDeserializer JsonErrorDeserializer}
          */
         @NonNull
@@ -324,16 +324,14 @@ public class RestApi {
 
         /**
          * Error response deserializer
-         * </p>
+         * <p>
          * default: {@link com.rafalzajfert.restapi.serialization.JsonErrorDeserializer JsonErrorDeserializer}
          */
-        public void setErrorDeserializer(@NonNull ErrorDeserializer errorDeserializer) {
+        public Config setErrorDeserializer(@NonNull ErrorDeserializer errorDeserializer) {
             mErrorDeserializer = errorDeserializer;
+            return this;
         }
 
-        /**
-         * @hide
-         */
         @StringDef({HTTP, HTTPS})
         @Retention(RetentionPolicy.SOURCE)
         public @interface Scheme {

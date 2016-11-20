@@ -94,7 +94,8 @@ class RequestFutureTask<T> extends FutureTask<T> implements RequestFuture<T> {
     }
 
     /**
-     * Convert all type of the exception to {@link RuntimeException} instance.<br />
+     * Convert all type of the exception to {@link RuntimeException} instance.
+     * <p>
      * <b>Note:</b> {@link RuntimeException} will be thrown immediately.
      *
      * @param e instance of exception that should be wrapped

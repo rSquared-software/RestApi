@@ -25,7 +25,7 @@ public class JacksonSerializerTest {
 
     @Before
     public void setUp() throws Exception {
-        mSerializer = new JacksonSerializer();
+        mSerializer = new JacksonSerializer(new JacksonSerializer.Config().setIntBoolean(true).setTimeInSeconds(true));
     }
 
     @After

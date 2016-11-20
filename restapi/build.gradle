@@ -20,6 +20,10 @@ android {
     testOptions {
         unitTests.returnDefaultValues = true
     }
+    lintOptions {
+        abortOnError false
+    }
+
 }
 
 dependencies {
@@ -33,7 +37,7 @@ dependencies {
 Properties properties = new Properties()
 properties.load(project.rootProject.file('local.properties').newDataInputStream())
 
-//gradlew clean build bintrayUpload PdryRun=false
+//gradlew clean build bintrayUpload -PdryRun=false
 publish {
     userOrg = 'rafalzajfert'
     groupId = 'com.rafalzajfert'

@@ -100,8 +100,9 @@ public class JsonDeserializer implements Deserializer {
         /**
          * Set true if time should be serialized to unix time seconds
          */
-        public void setTimeInSeconds(boolean timeInSeconds) {
+        public Config setTimeInSeconds(boolean timeInSeconds) {
             mTimeInSeconds = timeInSeconds;
+            return this;
         }
 
     }
