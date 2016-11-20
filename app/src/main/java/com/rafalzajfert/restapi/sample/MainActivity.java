@@ -20,9 +20,9 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        RestApi.setConfiguration(new RestApi.Configuration()
-                .setScheme(RestApiConfiguration.HTTP)
-                .setHost("sem-api.projectown.net")
+        RestApi.setConfiguration(new RestApi.Config()
+                .setScheme(RestApi.Config.HTTP)
+                .setHost("api.rafalzajfert.com")
         );
 
 //        RestApi.execute(new GetVersion(), new ResponseListener<Version>() {
