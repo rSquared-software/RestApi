@@ -1,8 +1,9 @@
 apply plugin: 'com.android.library'
+apply plugin: 'com.novoda.bintray-release'
 
 android {
     compileSdkVersion 24
-    buildToolsVersion "24.0.1"
+    buildToolsVersion "24.0.2"
 
     defaultConfig {
         minSdkVersion 18
@@ -27,4 +28,19 @@ dependencies {
     compile 'com.fasterxml.jackson.core:jackson-databind:2.8.1'
     compile 'com.squareup.okhttp3:okhttp:3.4.1'
     compile 'com.rafalzajfert:android-logger:1.1.16'
+}
+
+Properties properties = new Properties()
+properties.load(project.rootProject.file('local.properties').newDataInputStream())
+
+//gradlew clean build bintrayUpload PdryRun=false
+publish {
+    userOrg = 'rafalzajfert'
+    groupId = 'com.rafalzajfert'
+    artifactId = 'rest-api'
+    publishVersion = '1.0.0'
+    desc = 'Library for simplify android rest api connecton'
+    website = 'https://github.com/RafalZajfert/RestApi'
+    bintrayUser = properties.getProperty("bintray.oss.user")
+    bintrayKey = properties.getProperty("bintray.apikey")
 }
