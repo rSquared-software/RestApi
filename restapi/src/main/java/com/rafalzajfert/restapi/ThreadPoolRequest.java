@@ -11,7 +11,7 @@ import java.util.Map;
  *
  * @author Rafal Zajfert
  */
-public class ThreadPoolRequest extends PoolRequest<ThreadPoolRequest> {
+class ThreadPoolRequest extends PoolRequest<ThreadPoolRequest> {
 
     private Map<Integer, Object> mResults = new LinkedHashMap<>();
     private ResponsePoolListener mListener;

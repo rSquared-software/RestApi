@@ -1,11 +1,15 @@
 package com.rafalzajfert.restapi;
 
+import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.StringDef;
 import android.text.TextUtils;
 
 import com.rafalzajfert.restapi.exceptions.DefaultErrorResponse;
+import com.rafalzajfert.restapi.exceptions.RequestException;
+import com.rafalzajfert.restapi.listeners.ResponseListener;
+import com.rafalzajfert.restapi.listeners.ResponsePoolListener;
 import com.rafalzajfert.restapi.serialization.Deserializer;
 import com.rafalzajfert.restapi.serialization.ErrorDeserializer;
 import com.rafalzajfert.restapi.serialization.JacksonSerializer;
@@ -15,31 +19,95 @@ import com.rafalzajfert.restapi.serialization.Serializer;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * TODO: Documentation
  *
  * @author Rafał Zajfert
  */
-@SuppressWarnings({"unused","WeakerAccess"})
+@SuppressWarnings({"unused", "WeakerAccess"})
 public class RestApi {
 
+    public static final int THREAD_POOL_EXECUTOR = 1;
+    public static final int SERIAL_EXECUTOR = 2;
     private static Config sConfiguration;
-
-    /**
-     * Set configuration of the connection to the api. This method must be called before using any connection with the Api
-     * @param configuration object with rest configuration
-     */
-    public static void setConfiguration(Config configuration){
-        sConfiguration = configuration;
-    }
 
     static Config getConfiguration() {
         return sConfiguration;
     }
 
+    /**
+     * Set configuration of the connection to the api. This method must be called before using any connection with the Api
+     *
+     * @param configuration object with rest configuration
+     */
+    public static void setConfiguration(Config configuration) {
+        sConfiguration = configuration;
+    }
+
     static boolean isConfigured() {
         return sConfiguration != null;
+    }
+
+    public static <E> void execute(Request<E> request, ResponseListener<E> listener) {
+        request.execute(listener);
+    }
+
+    public static <E> E executeSync(Request<E> request) throws RequestException {
+        return request.execute().get();
+    }
+
+    public static PoolBuilder pool(@Executor int executor) {
+        return new PoolBuilder(executor);
+    }
+
+    /**
+     * @hide
+     */
+    @IntDef({THREAD_POOL_EXECUTOR, SERIAL_EXECUTOR})
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface Executor {
+    }
+
+    public static class PoolBuilder {
+        protected Map<Integer, Request> mRequestPool = new LinkedHashMap<>();
+        @Executor
+        private int mExecutor;
+
+        public PoolBuilder(@Executor int executor) {
+            mExecutor = executor;
+        }
+
+        public PoolRequest build() {
+            PoolRequest poolRequest;
+            switch (mExecutor) {
+                case THREAD_POOL_EXECUTOR:
+                    poolRequest = new ThreadPoolRequest(mRequestPool.size());
+                    break;
+                case SERIAL_EXECUTOR:
+                default:
+                    poolRequest = new SerialPoolRequest();
+                    break;
+
+            }
+            for (Map.Entry<Integer, Request> entry : mRequestPool.entrySet()) {
+                poolRequest.addTask(entry.getValue(), entry.getKey());
+            }
+            return poolRequest;
+        }
+
+        public void execute(ResponsePoolListener listener) {
+            PoolRequest poolRequest = build();
+            poolRequest.execute(listener);
+        }
+
+
+        public PoolBuilder add(@NonNull Request request, int requestCode) {
+            mRequestPool.put(requestCode, request);
+            return this;
+        }
     }
 
     public static class Config {

@@ -12,7 +12,7 @@ import java.util.Map;
  *
  * @author Rafal Zajfert
  */
-public class SerialPoolRequest extends PoolRequest<SerialPoolRequest> {
+class SerialPoolRequest extends PoolRequest<SerialPoolRequest> {
 
     private ResponsePoolListener mListener;
     private Map<Integer, Object> mResults = new LinkedHashMap<>();

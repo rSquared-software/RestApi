@@ -1,5 +1,6 @@
 package com.rafalzajfert.restapi.sample;
 
+import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 
@@ -10,8 +11,10 @@ import com.rafalzajfert.restapi.GetRequest;
 import com.rafalzajfert.restapi.RestApi;
 import com.rafalzajfert.restapi.exceptions.RequestException;
 import com.rafalzajfert.restapi.listeners.ResponseListener;
+import com.rafalzajfert.restapi.listeners.ResponsePoolListener;
 
 import java.util.Calendar;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -25,33 +28,54 @@ public class MainActivity extends AppCompatActivity {
                 .setHost("api.rafalzajfert.com")
         );
 
-//        RestApi.execute(new GetVersion(), new ResponseListener<Version>() {
-//            @Override
-//            public void onSuccess(Version result) {
-//                Logger.error(result);
-//            }
-//
-//            @Override
-//            public void onFailed(RequestException e) {
-//                Logger.error(e);
-//            }
-//        });
+        RestApi.execute(new GetVersion(), new ResponseListener<Version>() {
+            @Override
+            public void onSuccess(Version result) {
+                Logger.debug(result);
+            }
 
-//        RestApi.pool(RestApi.THREAD_POOL_EXECUTOR)
-//                .add(new Request(), 1, new PostTask())
-//                .add(new Request(), 1, new PostTask())
-//                .add(new Request(), 2, new PostTask())
-//                .execute(new PoolResponseListener<>() {
-//                    public void onSuccess(Map<Integer, Object> results) {
-//
-//                    }
-//
-//                    public void onFailed(RequestException e) {
-//
-//                    }
-//                });
+            @Override
+            public void onFailed(RequestException e) {
+                Logger.error(e);
+            }
+        });
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Version version = RestApi.executeSync(new GetVersion());
+                    Logger.debug(version);
+                } catch (RequestException e) {
+                    Logger.error(e);
+                }
+            }
+        }).start();
 
 
+
+        RestApi.pool(RestApi.THREAD_POOL_EXECUTOR)
+                .add(new GetVersion(), 1)
+                .add(new GetVersion(), 2)
+                .add(new GetVersion(), 3)
+                .execute(new ResponsePoolListener() {
+                    @Override
+                    public void onTaskSuccess(Object result, int requestCode) {
+
+                    }
+
+                    @Override
+                    public void onSuccess(@NonNull Map<Integer, Object> result) {
+
+                    }
+
+                    @Override
+                    public boolean onFailed(RequestException e, int requestCode) {
+                        return false;
+                    }
+                });
+
+//TODO next futures
 //        RestApi.get(new TypeReference<List<User>>() {}, "v1", "user")
 //                .withAccessToken()
 //                .with("username", "Rafal")

@@ -3,7 +3,6 @@ package com.rafalzajfert.restapi;
 import android.os.Environment;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.rafalzajfert.restapi.annotations.RestObject;
 import com.rafalzajfert.restapi.serialization.JacksonSerializer;
 
 import org.junit.After;

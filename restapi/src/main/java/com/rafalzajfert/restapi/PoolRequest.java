@@ -14,7 +14,7 @@ import java.util.Map;
  *
  * @author Rafal Zajfert
  */
-public abstract class PoolRequest<P extends PoolRequest> {
+abstract class PoolRequest<P extends PoolRequest> {
 
 	protected Map<Integer, Request> mRequestPool = new LinkedHashMap<>();
 
@@ -26,7 +26,7 @@ public abstract class PoolRequest<P extends PoolRequest> {
 		mExecutor = new RequestExecutor(poolSize, 0L);
 	}
 
-	public <T> P addTask(@NonNull Request<T> request, int requestCode) {
+	public P addTask(@NonNull Request request, int requestCode) {
 		if (mExecuted) {
 			throw new IllegalStateException("New task cannot be added to the pool after executing.");
 		}

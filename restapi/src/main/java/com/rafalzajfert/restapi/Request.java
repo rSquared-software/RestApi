@@ -98,14 +98,14 @@ public abstract class Request<T> {
     /**
      * {@inheritDoc}
      */
-    public RequestFuture<T> execute() {
+    RequestFuture<T> execute() {
         return execute(null);
     }
 
     /**
      * {@inheritDoc}
      */
-    public RequestFuture<T> execute(ResponseListener<T> listener) {
+    RequestFuture<T> execute(ResponseListener<T> listener) {
         return execute(createRequestTask(), listener);
     }
 
