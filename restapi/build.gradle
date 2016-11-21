@@ -31,7 +31,7 @@ dependencies {
     testCompile 'junit:junit:4.12'
     compile 'com.fasterxml.jackson.core:jackson-databind:2.8.1'
     compile 'com.squareup.okhttp3:okhttp:3.4.1'
-    compile 'com.rafalzajfert:android-logger:1.1.16'
+    compile 'com.rafalzajfert:android-logger:1.1.19'
 }
 
 Properties properties = new Properties()
@@ -42,7 +42,7 @@ publish {
     userOrg = 'rafalzajfert'
     groupId = 'com.rafalzajfert'
     artifactId = 'rest-api'
-    publishVersion = '1.0.0'
+    publishVersion = '1.0.1'
     desc = 'Library for simplify android rest api connecton'
     website = 'https://github.com/RafalZajfert/RestApi'
     bintrayUser = properties.getProperty("bintray.oss.user")

@@ -29,7 +29,8 @@ public class MainActivity extends AppCompatActivity {
                 .setHost("api.rafalzajfert.com")
         );
 
-        RestApi.execute(new GetVersion(), new ResponseListener<Version>() {
+        GetVersion getVersion = new GetVersion();
+        RestApi.execute(getVersion, new ResponseListener<Version>() {
             @Override
             public void onSuccess(Version result) {
                 Logger.error("onSuccess");
@@ -38,7 +39,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onFailed(RequestException e) {
-                Logger.error(e.toString());
+                Logger.error(e);
             }
         });
 

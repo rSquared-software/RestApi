@@ -25,7 +25,7 @@ public abstract class DeleteRequest<T> extends Request<T> {
     @Override
     protected Response request() throws IOException {
         HttpUrl url = getUrl();
-        Logger.info("[DELETE]", this.getClass().getSimpleName() + "\n" + url);
+        RestApi.getLogger().i("[DELETE]", this.getClass().getSimpleName() + "\n" + url);
         okhttp3.Request request = createRequest(url, getRequestBody());
         return mHttpClient.newCall(request).execute();
     }

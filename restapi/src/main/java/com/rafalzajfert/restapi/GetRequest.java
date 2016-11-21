@@ -24,7 +24,7 @@ public abstract class GetRequest<E> extends Request<E> {
     @Override
     protected Response request() throws IOException {
         HttpUrl url = getUrl();
-        Logger.info("[GET]", this.getClass().getSimpleName() + "\n" + url);
+        RestApi.getLogger().i("[GET]", this.getClass().getSimpleName() + "\n" + url);
         return mHttpClient.newCall(createRequest(url)).execute();
     }
 

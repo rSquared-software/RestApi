@@ -6,6 +6,9 @@ import android.support.annotation.Nullable;
 import android.support.annotation.StringDef;
 import android.text.TextUtils;
 
+import com.rafalzajfert.androidlogger.Level;
+import com.rafalzajfert.androidlogger.Logger;
+import com.rafalzajfert.androidlogger.logcat.LogcatLogger;
 import com.rafalzajfert.restapi.exceptions.DefaultErrorResponse;
 import com.rafalzajfert.restapi.exceptions.RequestException;
 import com.rafalzajfert.restapi.listeners.ResponseListener;
@@ -36,6 +39,10 @@ public class RestApi {
 
     static Config getConfiguration() {
         return sConfiguration;
+    }
+
+    static Logger getLogger(){
+        return sConfiguration.mLogger;
     }
 
     /**
@@ -121,6 +128,8 @@ public class RestApi {
         private BasicAuthorization mBasicAuthorization;
         @Nullable
         private InitialRequirements mInitialRequirements;
+
+        private Logger mLogger = new LogcatLogger();
 
         @NonNull
         private ErrorDeserializer mErrorDeserializer = new JsonErrorDeserializer();
@@ -329,6 +338,16 @@ public class RestApi {
          */
         public Config setErrorDeserializer(@NonNull ErrorDeserializer errorDeserializer) {
             mErrorDeserializer = errorDeserializer;
+            return this;
+        }
+
+        /**
+         * Requests log {@link Level}
+         * <p>
+         * default: {@link Level#VERBOSE}
+         */
+        public Config setLogLevel(Level level){
+            ((LogcatLogger)mLogger).getConfig().setLevel(level);
             return this;
         }
 

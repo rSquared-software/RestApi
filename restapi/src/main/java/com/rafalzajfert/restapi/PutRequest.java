@@ -26,7 +26,7 @@ public abstract class PutRequest<T> extends Request<T> {
     @Override
     protected Response request() throws IOException {
         HttpUrl url = getUrl();
-        Logger.info("[PUT]", this.getClass().getSimpleName() + "\n" + url);
+        RestApi.getLogger().i("[PUT]", this.getClass().getSimpleName() + "\n" + url);
         okhttp3.Request request = createRequest(url, getRequestBody());
         return mHttpClient.newCall(request).execute();
     }

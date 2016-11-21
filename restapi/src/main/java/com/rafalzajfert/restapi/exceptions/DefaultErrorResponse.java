@@ -3,7 +3,6 @@ package com.rafalzajfert.restapi.exceptions;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSetter;
-import com.rafalzajfert.androidlogger.Logger;
 
 import java.util.HashMap;
 import java.util.List;

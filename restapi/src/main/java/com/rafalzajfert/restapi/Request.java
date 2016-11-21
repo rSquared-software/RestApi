@@ -135,7 +135,7 @@ public abstract class Request<T> {
             public T call() throws Exception {
                 mTimer.start();
                 T result = executeRequest();
-                Logger.verboseF("%s execution took: %.3fms", Request.this.getClass().getSimpleName(), mTimer.getElapsedTime());
+                RestApi.getLogger().vF("%s execution took: %.3fms", Request.this.getClass().getSimpleName(), mTimer.getElapsedTime());
                 return result;
             }
         };
@@ -194,7 +194,7 @@ public abstract class Request<T> {
             return;
         }
         if (mUserService == null) {
-            throw new IllegalArgumentException("Request is not properly configured to use UserService. Use method RestApiConfiguration.setUserService(RestAuthorizationService) to deliver user service implementation");
+            throw new IllegalArgumentException("Request is not properly configured to use UserService. Use method RestApi.Config.setRestAuthorizationService(RestAuthorizationService) to provide user service implementation");
         }
 
         if (!mUserService.isLogged()) {
@@ -228,7 +228,14 @@ public abstract class Request<T> {
      * Mark that this request need authorization via {@link #ACCESS_TOKEN}
      */
     public void setIsAuthorizedRequest() {
-        mAuthorizedRequest = true;
+        setIsAuthorizedRequest(true);
+    }
+
+    /**
+     * Mark that this request need (or not) authorization via {@link #ACCESS_TOKEN}
+     */
+    public void setIsAuthorizedRequest(boolean authorizedRequest) {
+        mAuthorizedRequest = authorizedRequest;
     }
 
     /**
@@ -236,7 +243,7 @@ public abstract class Request<T> {
      *
      * @return true if {@link #setIsAuthorizedRequest()} was called or {@link Request} implements {@link Authorizable} interface
      */
-    public boolean needAuthorization() {
+    protected boolean needAuthorization() {
         return mAuthorizedRequest || this instanceof Authorizable;
     }
 
@@ -267,7 +274,7 @@ public abstract class Request<T> {
         }
         int status = response.code();
         String content = response.body().string();
-        Logger.verbose(content);
+        RestApi.getLogger().v(content);
         if (isSuccess(response)) {
             //noinspection unchecked
             return (T) getDeserializer().read(getClass(), content);
@@ -444,7 +451,7 @@ public abstract class Request<T> {
             if (parameter.isFile()) {
                 String name = parameter.getName();
                 String path = parameter.getFilePath();
-                Logger.debug(name + ":", path);
+                RestApi.getLogger().d(name + ":", path);
                 File file = new File(path);
                 if (file.exists()) {
                     bodyBuilder.addFormDataPart(name, file.getName(), RequestBody.create(MediaType.parse("image/" + getFileExtension(file)), file));
@@ -455,7 +462,7 @@ public abstract class Request<T> {
         for (Parameter parameter : mBodyParameters) {
             String name = parameter.getName();
             String value = String.valueOf(parameter.getValue());
-            Logger.debug(name + ":", value);
+            RestApi.getLogger().d(name + ":", value);
             if (!TextUtils.isEmpty(value)) {
                 bodyBuilder.addFormDataPart(name, value);
             }
@@ -478,7 +485,7 @@ public abstract class Request<T> {
         for (Parameter parameter : mBodyParameters) {
             String name = parameter.getName();
             String value = String.valueOf(parameter.getValue());
-            Logger.debug(name + ":", value);
+            RestApi.getLogger().d(name + ":", value);
             if (!TextUtils.isEmpty(value)) {
                 bodyBuilder.add(name, value);
             }

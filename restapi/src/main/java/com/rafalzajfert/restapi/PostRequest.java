@@ -27,7 +27,7 @@ public abstract class PostRequest<T> extends Request<T> {
     @Override
     protected Response request() throws IOException {
         HttpUrl url = getUrl();
-        Logger.info("[POST]", this.getClass().getSimpleName() + "\n" + url);
+        RestApi.getLogger().i("[POST]", this.getClass().getSimpleName() + "\n" + url);
         okhttp3.Request request = createRequest(url, getRequestBody());
         return mHttpClient.newCall(request).execute();
     }

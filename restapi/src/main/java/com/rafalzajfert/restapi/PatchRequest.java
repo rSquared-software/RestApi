@@ -25,7 +25,7 @@ public abstract class PatchRequest<T> extends Request<T> {
     @Override
     protected Response request() throws IOException {
         HttpUrl url = getUrl();
-        Logger.info("[PATCH]", this.getClass().getSimpleName() + "\n" + url);
+        RestApi.getLogger().i("[PATCH]", this.getClass().getSimpleName() + "\n" + url);
         okhttp3.Request request = createRequest(url, getRequestBody());
         return mHttpClient.newCall(request).execute();
     }
