@@ -6,6 +6,7 @@ import android.support.annotation.Nullable;
 import com.rafalzajfert.androidlogger.Logger;
 
 import java.io.IOException;
+import java.util.Map;
 
 import okhttp3.*;
 import okhttp3.Request.Builder;
@@ -39,6 +40,9 @@ public abstract class DeleteRequest<T> extends Request<T> {
         Builder requestBuilder = new Builder()
                 .url(url)
                 .addHeader(CONTENT_TYPE, getMediaType().toString());
+        for (Map.Entry<String, String> entry : getHeaders().entrySet()) {
+            requestBuilder.addHeader(entry.getKey(), entry.getValue());
+        }
         if (body != null) {
             requestBuilder.delete(body);
         } else {

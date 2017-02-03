@@ -6,7 +6,7 @@ android {
     buildToolsVersion "24.0.2"
 
     defaultConfig {
-        minSdkVersion 18
+        minSdkVersion 14
         targetSdkVersion 24
         versionCode 1
         versionName "1.0"
@@ -42,7 +42,7 @@ publish {
     userOrg = 'rafalzajfert'
     groupId = 'com.rafalzajfert'
     artifactId = 'rest-api'
-    publishVersion = '1.0.1'
+    publishVersion = '1.0.2'
     desc = 'Library for simplify android rest api connecton'
     website = 'https://github.com/RafalZajfert/RestApi'
     bintrayUser = properties.getProperty("bintray.oss.user")

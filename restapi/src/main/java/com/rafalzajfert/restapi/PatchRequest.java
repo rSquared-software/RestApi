@@ -5,6 +5,7 @@ import android.support.annotation.NonNull;
 import com.rafalzajfert.androidlogger.Logger;
 
 import java.io.IOException;
+import java.util.Map;
 
 import okhttp3.HttpUrl;
 import okhttp3.RequestBody;
@@ -31,9 +32,12 @@ public abstract class PatchRequest<T> extends Request<T> {
     }
     @NonNull
     private okhttp3.Request createRequest(HttpUrl url, RequestBody body) {
-        return new okhttp3.Request.Builder()
-                    .url(url)
-                    .addHeader(CONTENT_TYPE, getMediaType().toString())
-                    .patch(body).build();
+        okhttp3.Request.Builder builder = new okhttp3.Request.Builder()
+                .url(url)
+                .addHeader(CONTENT_TYPE, getMediaType().toString());
+        for (Map.Entry<String, String> entry : getHeaders().entrySet()) {
+            builder.addHeader(entry.getKey(), entry.getValue());
+        }
+        return builder.patch(body).build();
     }
 }

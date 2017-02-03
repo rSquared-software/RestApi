@@ -6,6 +6,7 @@ import android.support.annotation.Nullable;
 import com.rafalzajfert.androidlogger.Logger;
 
 import java.io.IOException;
+import java.util.Map;
 
 import okhttp3.HttpUrl;
 import okhttp3.MediaType;
@@ -34,9 +35,12 @@ public abstract class PostRequest<T> extends Request<T> {
 
     @NonNull
     private okhttp3.Request createRequest(@NonNull HttpUrl url, @Nullable RequestBody body) {
-        return new okhttp3.Request.Builder()
+        okhttp3.Request.Builder builder = new okhttp3.Request.Builder()
                 .url(url)
-                .addHeader(CONTENT_TYPE, getMediaType().toString())
-                .post(body).build();
+                .addHeader(CONTENT_TYPE, getMediaType().toString());
+        for (Map.Entry<String, String> entry : getHeaders().entrySet()) {
+            builder.addHeader(entry.getKey(), entry.getValue());
+        }
+        return builder.post(body).build();
     }
 }

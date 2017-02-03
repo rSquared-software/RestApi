@@ -44,6 +44,8 @@ class ThreadPoolRequest extends PoolRequest<ThreadPoolRequest> {
                     int requestCode = getRequestCode();
                     if (mListener != null && mListener.onFailed(e, requestCode)) {
                         stopExecute();
+                    } else {
+                        mResults.put(requestCode, null);
                     }
                     checkFinished();
                 }

@@ -51,7 +51,8 @@ class SerialPoolRequest extends PoolRequest<SerialPoolRequest> {
                 @Override
                 public void onFailed(RequestException e) {
                     int requestCode = getRequestCode();
-                    if (!mListener.onFailed(e, requestCode)) {
+                    if (mListener == null || !mListener.onFailed(e, requestCode)) {
+                        mResults.put(requestCode, null);
                         executeNext();
                     }
                 }

@@ -22,6 +22,7 @@ import com.rafalzajfert.restapi.serialization.Serializer;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -41,10 +42,6 @@ public class RestApi {
         return sConfiguration;
     }
 
-    static Logger getLogger(){
-        return sConfiguration.mLogger;
-    }
-
     /**
      * Set configuration of the connection to the api. This method must be called before using any connection with the Api
      *
@@ -52,6 +49,10 @@ public class RestApi {
      */
     public static void setConfiguration(Config configuration) {
         sConfiguration = configuration;
+    }
+
+    static Logger getLogger() {
+        return sConfiguration.mLogger;
     }
 
     static boolean isConfigured() {
@@ -145,6 +146,8 @@ public class RestApi {
         private Class<? extends DefaultErrorResponse> mErrorResponseClass;
 
         private RestAuthorizationService mRestAuthorizationService;
+
+        private Map<String, String> mHeaders = new HashMap<>();
 
         /**
          * Timeout for the connections.
@@ -346,9 +349,23 @@ public class RestApi {
          * <p>
          * default: {@link Level#VERBOSE}
          */
-        public Config setLogLevel(Level level){
-            ((LogcatLogger)mLogger).getConfig().setLevel(level);
+        public Config setLogLevel(Level level) {
+            ((LogcatLogger) mLogger).getConfig().setLevel(level);
             return this;
+        }
+
+        public Config addHeader(String name, String value) {
+            mHeaders.put(name, value);
+            return this;
+        }
+
+        public Config removeHeader(String name) {
+            mHeaders.remove(name);
+            return this;
+        }
+
+        public Map<String, String> getHeaders() {
+            return mHeaders;
         }
 
         @StringDef({HTTP, HTTPS})

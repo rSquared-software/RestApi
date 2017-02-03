@@ -5,7 +5,6 @@ import android.support.annotation.Nullable;
 import android.support.annotation.WorkerThread;
 import android.text.TextUtils;
 
-import com.rafalzajfert.androidlogger.Logger;
 import com.rafalzajfert.restapi.exceptions.AccessTokenException;
 import com.rafalzajfert.restapi.exceptions.InitialRequirementsException;
 import com.rafalzajfert.restapi.exceptions.RequestException;
@@ -17,8 +16,10 @@ import com.rafalzajfert.restapi.serialization.Serializer;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
@@ -52,6 +53,7 @@ public abstract class Request<T> {
     private final RequestExecutor mExecutor;
     private final List<Parameter> mBodyParameters = new ArrayList<>();
     private final List<Parameter> mUrlParameters = new ArrayList<>();
+    private final Map<String, String> mHeaderMap = new HashMap<>();
     private final Timer mTimer = new Timer();
     private MediaType mMediaType = APPLICATION_URLENCODED;
     private String[] mUrlSegments;
@@ -198,7 +200,7 @@ public abstract class Request<T> {
         }
 
         if (!mUserService.isLogged()) {
-            return;
+            throw new IllegalArgumentException(Request.this.getClass().getSimpleName() + " required user to be logged in.");
         }
 
         try {
@@ -384,6 +386,16 @@ public abstract class Request<T> {
         mBodyParameters.addAll(getSerializer().serialize(value));
     }
 
+    protected void addHeader(@NonNull String name, @NonNull String value) {
+        mHeaderMap.put(name, value);
+    }
+
+    protected Map<String, String> getHeaders() {
+        Map<String, String> headers = new HashMap<>(mHeaderMap);
+        headers.putAll(RestApi.getConfiguration().getHeaders());
+        return headers;
+    }
+
     /**
      * Removes parameter from request body
      */
@@ -497,15 +509,15 @@ public abstract class Request<T> {
         return isMultipartRequest() ? MULTIPART_FORM_DATA : mMediaType;
     }
 
-    private Serializer getSerializer() {
+    protected Serializer getSerializer() {
         return RestApi.getConfiguration().getSerializer();
     }
 
-    private Deserializer getDeserializer() {
+    protected Deserializer getDeserializer() {
         return RestApi.getConfiguration().getDeserializer();
     }
 
-    private ErrorDeserializer getErrorDeserializer() {
+    protected ErrorDeserializer getErrorDeserializer() {
         return RestApi.getConfiguration().getErrorDeserializer();
     }
 
