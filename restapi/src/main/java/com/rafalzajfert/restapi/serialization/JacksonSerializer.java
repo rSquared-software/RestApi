@@ -60,6 +60,12 @@ public class JacksonSerializer implements Serializer {
                     gen.writeNumber(value ? 1 : 0);
                 }
             });
+            module.addSerializer(boolean.class, new JsonSerializer<Boolean>() {
+                @Override
+                public void serialize(Boolean value, JsonGenerator gen, SerializerProvider serializers) throws IOException, JsonProcessingException {
+                    gen.writeNumber(value ? 1 : 0);
+                }
+            });
             module.addSerializer(boolean[].class, new JsonSerializer<boolean[]>() {
                 @Override
                 public void serialize(boolean[] value, JsonGenerator gen, SerializerProvider serializers) throws IOException, JsonProcessingException {
