@@ -5,6 +5,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.text.TextUtils;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -42,6 +43,9 @@ public class JacksonSerializer implements Serializer {
         SimpleModule module = new SimpleModule();
         setupModule(module);
         mObjectMapper.registerModule(module);
+        if (!mConfig.mNullValues) {
+            mObjectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+        }
     }
 
     @CallSuper
@@ -154,6 +158,7 @@ public class JacksonSerializer implements Serializer {
     public static class Config {
         private boolean mTimeInSeconds;
         private boolean mIntBoolean;
+        private boolean mNullValues;
 
         /**
          * Set true if time should be serialized to unix time seconds
@@ -168,6 +173,14 @@ public class JacksonSerializer implements Serializer {
          */
         public Config setIntBoolean(boolean intBoolean) {
             mIntBoolean = intBoolean;
+            return this;
+        }
+
+        /**
+         * Set true if non null values should be serialized
+         */
+        public Config setNullValues(boolean nonNullValues) {
+            mNullValues = nonNullValues;
             return this;
         }
     }

@@ -4,7 +4,7 @@
 
 ```Gradle
 dependencies {
-    compile 'com.rafalzajfert:rest-api:1.0.3'
+    compile 'com.rafalzajfert:rest-api:1.0.4'
 }
 ```
 
@@ -16,7 +16,7 @@ dependencies {
 <dependency>
     <groupId>com.rafalzajfert</groupId>
     <artifactId>rest-api</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.4</version>
 </dependency>
 ```
 
