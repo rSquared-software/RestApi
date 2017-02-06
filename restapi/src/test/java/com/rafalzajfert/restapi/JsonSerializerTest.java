@@ -3,7 +3,7 @@ package com.rafalzajfert.restapi;
 import android.os.Environment;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.rafalzajfert.restapi.serialization.JacksonSerializer;
+import com.rafalzajfert.restapi.serialization.JsonSerializer;
 
 import org.junit.After;
 import org.junit.Before;
@@ -19,13 +19,13 @@ import static org.junit.Assert.*;
 /**
  * @author Rafal Zajfert
  */
-public class JacksonSerializerTest {
+public class JsonSerializerTest {
 
-    private JacksonSerializer mSerializer;
+    private JsonSerializer mSerializer;
 
     @Before
     public void setUp() throws Exception {
-        mSerializer = new JacksonSerializer(new JacksonSerializer.Config().setIntBoolean(true).setTimeInSeconds(true));
+        mSerializer = new JsonSerializer(new JsonSerializer.Config().setIntBoolean(true).setTimeInSeconds(true));
     }
 
     @After

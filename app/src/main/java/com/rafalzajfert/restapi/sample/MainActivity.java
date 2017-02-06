@@ -1,18 +1,26 @@
 package com.rafalzajfert.restapi.sample;
 
+import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
-import android.util.Log;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.rafalzajfert.androidlogger.Level;
 import com.rafalzajfert.androidlogger.Logger;
+import com.rafalzajfert.restapi.Authorizable;
 import com.rafalzajfert.restapi.GetRequest;
+import com.rafalzajfert.restapi.InitialRequirements;
+import com.rafalzajfert.restapi.Request;
 import com.rafalzajfert.restapi.RestApi;
+import com.rafalzajfert.restapi.exceptions.DefaultErrorResponse;
+import com.rafalzajfert.restapi.exceptions.InitialRequirementsException;
 import com.rafalzajfert.restapi.exceptions.RequestException;
 import com.rafalzajfert.restapi.listeners.ResponseListener;
 import com.rafalzajfert.restapi.listeners.ResponsePoolListener;
+import com.rafalzajfert.restapi.serialization.JsonDeserializer;
+import com.rafalzajfert.restapi.serialization.JsonErrorDeserializer;
+import com.rafalzajfert.restapi.serialization.JsonSerializer;
 
 import java.util.Calendar;
 import java.util.Map;
@@ -26,7 +34,29 @@ public class MainActivity extends AppCompatActivity {
 
         RestApi.setConfiguration(new RestApi.Config()
                 .setScheme(RestApi.Config.HTTP)
-                .setHost("api.rafalzajfert.com")
+                .setHost("api.host.com")
+//                .setPort(80)
+//                .setInitialRequirements(new InitialRequirements() {
+//                    @Override
+//                    public void onCheckRequirements(Request<?> request) throws InitialRequirementsException {
+//                        if (!isOnline()){
+//                            throw new InitialRequirementsException("Offline!");
+//                        }
+//                    }
+//                })
+//                .setRestAuthorizationService(UserService.getInstance())
+//                .setTimeout(60000)
+//                .setLogLevel(Level.VERBOSE)
+//                .addHeader("lang", "en")
+//                .setAuthorization("user", "pass123")
+//                .setDeserializer(new JsonDeserializer(new JsonDeserializer.Config()
+//                        .setTimeInSeconds(true)))
+//                .setSerializer(new JsonSerializer(new JsonSerializer.Config()
+//                        .setTimeInSeconds(true)
+//                        .setIntBoolean(true)
+//                        .setNullValues(true)))
+//                .setErrorDeserializer(new JsonErrorDeserializer(new JsonErrorDeserializer.Config()
+//                        .setErrorClass(DefaultErrorResponse.class)))
         );
 
         GetVersion getVersion = new GetVersion();
@@ -43,6 +73,12 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+//        try {
+//            Version version = RestApi.executeSync(new GetVersion());
+//        } catch (RequestException e) {
+//            Logger.error(e);
+//        }
+
 //        new Thread(new Runnable() {
 //            @Override
 //            public void run() {
@@ -57,26 +93,26 @@ public class MainActivity extends AppCompatActivity {
 
 //
 //
-//        RestApi.pool(RestApi.THREAD_POOL_EXECUTOR)
-//                .add(new GetVersion(), 1)
-//                .add(new GetVersion(), 2)
-//                .add(new GetVersion(), 3)
-//                .execute(new ResponsePoolListener() {
-//                    @Override
-//                    public void onTaskSuccess(Object result, int requestCode) {
-//
-//                    }
-//
-//                    @Override
-//                    public void onSuccess(@NonNull Map<Integer, Object> result) {
-//
-//                    }
-//
-//                    @Override
-//                    public boolean onFailed(RequestException e, int requestCode) {
-//                        return false;
-//                    }
-//                });
+        RestApi.pool(RestApi.SERIAL_EXECUTOR)
+                .add(new GetVersion(), 1)
+                .add(new GetVersion(), 2)
+                .add(new GetVersion(), 3)
+                .execute(new ResponsePoolListener() {
+                    @Override
+                    public void onTaskSuccess(Object result, int requestCode) {
+
+                    }
+
+                    @Override
+                    public void onSuccess(@NonNull Map<Integer, Object> result) {
+
+                    }
+
+                    @Override
+                    public boolean onFailed(RequestException e, int requestCode) {
+                        return false;
+                    }
+                });
 
 //TODO next futures
 //        RestApi.get(new TypeReference<List<User>>() {}, "v1", "user")
@@ -108,16 +144,8 @@ public class MainActivity extends AppCompatActivity {
 //                });
     }
 
-    private class GetVersion extends GetRequest<Version>{
-
-        @Override
-        protected void prepareRequest() {
-            setUrlSegments("api", "version");
-        }
-    }
-
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class Version{
+    public static class Version {
         @JsonProperty("latest_version")
         private ApiVersion version;
 
@@ -130,7 +158,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class ApiVersion{
+    public static class ApiVersion {
         @JsonProperty("api_version")
         private String apiVersion;
         @JsonProperty("expiration_date")
@@ -142,6 +170,14 @@ public class MainActivity extends AppCompatActivity {
                     "apiVersion='" + apiVersion + '\'' +
                     ", expirationDate=" + expirationDate +
                     '}';
+        }
+    }
+
+    private class GetVersion extends GetRequest<Version> implements Authorizable {
+
+        @Override
+        protected void prepareRequest() {
+            setUrlSegments("api", "version");
         }
     }
 }

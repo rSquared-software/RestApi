@@ -200,7 +200,7 @@ public abstract class Request<T> {
         }
 
         if (!mUserService.isLogged()) {
-            throw new IllegalArgumentException(Request.this.getClass().getSimpleName() + " required user to be logged in.");
+            throw new AccessTokenException(Request.this.getClass().getSimpleName() + " required user to be logged in.");
         }
 
         try {

@@ -9,7 +9,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.fasterxml.jackson.databind.SerializerProvider;
@@ -29,15 +28,15 @@ import java.util.Map;
 /**
  * @author Rafal Zajfert
  */
-public class JacksonSerializer implements Serializer {
+public class JsonSerializer implements Serializer {
     private final ObjectMapper mObjectMapper = new ObjectMapper();
     private final Config mConfig;
 
-    public JacksonSerializer() {
+    public JsonSerializer() {
         this(new Config());
     }
 
-    public JacksonSerializer(@NonNull Config config) {
+    public JsonSerializer(@NonNull Config config) {
         mConfig = config;
         mObjectMapper.setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
         SimpleModule module = new SimpleModule();
@@ -50,7 +49,7 @@ public class JacksonSerializer implements Serializer {
 
     @CallSuper
     protected void setupModule(SimpleModule module) {
-        module.addSerializer(File.class, new JsonSerializer<File>() {
+        module.addSerializer(File.class, new com.fasterxml.jackson.databind.JsonSerializer<File>() {
             @Override
             public void serialize(File value, JsonGenerator gen, SerializerProvider serializers) throws IOException, JsonProcessingException {
                 gen.writeString("_file{" + value.getAbsolutePath() + "}");
@@ -58,19 +57,21 @@ public class JacksonSerializer implements Serializer {
         });
 
         if (mConfig.mIntBoolean) {
-            module.addSerializer(Boolean.class, new JsonSerializer<Boolean>() {
+            module.addSerializer(Boolean.class, new com.fasterxml.jackson.databind.JsonSerializer<Boolean>() {
+                @Override
+                public void serialize(Boolean value, JsonGenerator gen, SerializerProvider serializers) throws IOException, JsonProcessingException {
+                    if (value != null) {
+                        gen.writeNumber(value ? 1 : 0);
+                    }
+                }
+            });
+            module.addSerializer(boolean.class, new com.fasterxml.jackson.databind.JsonSerializer<Boolean>() {
                 @Override
                 public void serialize(Boolean value, JsonGenerator gen, SerializerProvider serializers) throws IOException, JsonProcessingException {
                     gen.writeNumber(value ? 1 : 0);
                 }
             });
-            module.addSerializer(boolean.class, new JsonSerializer<Boolean>() {
-                @Override
-                public void serialize(Boolean value, JsonGenerator gen, SerializerProvider serializers) throws IOException, JsonProcessingException {
-                    gen.writeNumber(value ? 1 : 0);
-                }
-            });
-            module.addSerializer(boolean[].class, new JsonSerializer<boolean[]>() {
+            module.addSerializer(boolean[].class, new com.fasterxml.jackson.databind.JsonSerializer<boolean[]>() {
                 @Override
                 public void serialize(boolean[] value, JsonGenerator gen, SerializerProvider serializers) throws IOException, JsonProcessingException {
                     int[] array = new int[value.length];
@@ -83,7 +84,7 @@ public class JacksonSerializer implements Serializer {
             });
         }
         if (mConfig.mTimeInSeconds) {
-            module.addSerializer(Calendar.class, new JsonSerializer<Calendar>() {
+            module.addSerializer(Calendar.class, new com.fasterxml.jackson.databind.JsonSerializer<Calendar>() {
                 @Override
                 public void serialize(Calendar value, JsonGenerator gen, SerializerProvider serializers) throws IOException, JsonProcessingException {
                     if (value != null) {
@@ -91,7 +92,7 @@ public class JacksonSerializer implements Serializer {
                     }
                 }
             });
-            module.addSerializer(Date.class, new JsonSerializer<Date>() {
+            module.addSerializer(Date.class, new com.fasterxml.jackson.databind.JsonSerializer<Date>() {
                 @Override
                 public void serialize(Date value, JsonGenerator gen, SerializerProvider serializers) throws IOException, JsonProcessingException {
                     if (value != null) {
@@ -179,7 +180,7 @@ public class JacksonSerializer implements Serializer {
         /**
          * Set true if non null values should be serialized
          */
-        public Config setNullValues(boolean nonNullValues) {
+        public Config setSerializeNullValues(boolean nonNullValues) {
             mNullValues = nonNullValues;
             return this;
         }

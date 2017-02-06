@@ -15,7 +15,7 @@ import com.rafalzajfert.restapi.listeners.ResponseListener;
 import com.rafalzajfert.restapi.listeners.ResponsePoolListener;
 import com.rafalzajfert.restapi.serialization.Deserializer;
 import com.rafalzajfert.restapi.serialization.ErrorDeserializer;
-import com.rafalzajfert.restapi.serialization.JacksonSerializer;
+import com.rafalzajfert.restapi.serialization.JsonSerializer;
 import com.rafalzajfert.restapi.serialization.JsonDeserializer;
 import com.rafalzajfert.restapi.serialization.JsonErrorDeserializer;
 import com.rafalzajfert.restapi.serialization.Serializer;
@@ -139,7 +139,7 @@ public class RestApi {
         private Deserializer mDeserializer = new JsonDeserializer();
 
         @NonNull
-        private Serializer mSerializer = new JacksonSerializer();
+        private Serializer mSerializer = new JsonSerializer();
 
         private RestAuthorizationService mUserService;
 
@@ -286,7 +286,7 @@ public class RestApi {
         /**
          * Request parameters serializer
          * <p>
-         * default: {@link com.rafalzajfert.restapi.serialization.JacksonSerializer JacksonSerializer}
+         * default: {@link JsonSerializer JsonSerializer}
          */
         @NonNull
         public Serializer getSerializer() {
@@ -297,7 +297,7 @@ public class RestApi {
         /**
          * Request parameters serializer
          * <p>
-         * default: {@link com.rafalzajfert.restapi.serialization.JacksonSerializer JacksonSerializer}
+         * default: {@link JsonSerializer JsonSerializer}
          */
         public Config setSerializer(@NonNull Serializer serializer) {
             mSerializer = serializer;
