@@ -1,7 +1,7 @@
 package com.rafalzajfert.restapi;
 
 import com.rafalzajfert.restapi.exceptions.RequestException;
-import com.rafalzajfert.restapi.listeners.ResponsePoolListener;
+import com.rafalzajfert.restapi.listeners.RequestPoolListener;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -14,21 +14,24 @@ import java.util.Map;
 class ThreadPoolRequest extends PoolRequest<ThreadPoolRequest> {
 
     private Map<Integer, Object> mResults = new LinkedHashMap<>();
-    private ResponsePoolListener mListener;
+    private RequestPoolListener mListener;
 
     public ThreadPoolRequest(int poolSize) {
         super(poolSize);
     }
 
-    public void execute(ResponsePoolListener listener) {
+    public void execute(RequestPoolListener listener) {
         if (mExecuted) {
             throw new IllegalStateException("Already executed.");
         }
         mExecuted = true;
 
         mListener = listener;
+        if (mListener != null) {
+            mListener.onPreExecute();
+        }
         for (Map.Entry<Integer, Request> entry : mRequestPool.entrySet()) {
-            mExecutor.submit(entry.getValue().createRequestTask(), new PoolRequest.PoolResponseListener(entry.getKey()) {
+            mExecutor.submit(entry.getValue().createRequestTask(), new PoolRequestListener(entry.getKey()) {
                 @Override
                 public void onSuccess(Object result) {
                     int requestCode = getRequestCode();
@@ -55,6 +58,7 @@ class ThreadPoolRequest extends PoolRequest<ThreadPoolRequest> {
                         stopExecute();
                         if (mListener != null) {
                             mListener.onSuccess(mResults);
+                            mListener.onPreExecute();
                         }
                     }
                 }

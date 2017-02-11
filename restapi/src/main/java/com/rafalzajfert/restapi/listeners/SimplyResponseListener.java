@@ -1,22 +1,14 @@
 package com.rafalzajfert.restapi.listeners;
 
 import com.rafalzajfert.restapi.Request;
-import com.rafalzajfert.restapi.exceptions.RequestException;
 
 /**
  * Listener for the {@link Request} that allows to receive signal when request execution finished
  *
  * @author Rafał Zajfert
+ * @deprecated Use {@link RequestListener} instead
  */
-public abstract class SimplyResponseListener<T> implements ResponseListener<T> {
+@Deprecated
+public abstract class SimplyResponseListener<T> extends RequestListener<T> {
 
-    /**
-     * {@inheritDoc}
-     */
-    public void onSuccess(T result){}
-
-    /**
-     * {@inheritDoc}
-     */
-    public void onFailed(RequestException e){}
 }

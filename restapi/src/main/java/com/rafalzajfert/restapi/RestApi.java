@@ -11,8 +11,8 @@ import com.rafalzajfert.androidlogger.Logger;
 import com.rafalzajfert.androidlogger.logcat.LogcatLogger;
 import com.rafalzajfert.restapi.exceptions.DefaultErrorResponse;
 import com.rafalzajfert.restapi.exceptions.RequestException;
-import com.rafalzajfert.restapi.listeners.ResponseListener;
-import com.rafalzajfert.restapi.listeners.ResponsePoolListener;
+import com.rafalzajfert.restapi.listeners.RequestListener;
+import com.rafalzajfert.restapi.listeners.RequestPoolListener;
 import com.rafalzajfert.restapi.serialization.Deserializer;
 import com.rafalzajfert.restapi.serialization.ErrorDeserializer;
 import com.rafalzajfert.restapi.serialization.JsonSerializer;
@@ -59,7 +59,7 @@ public class RestApi {
         return sConfiguration != null;
     }
 
-    public static <E> void execute(Request<E> request, ResponseListener<E> listener) {
+    public static <E> void execute(Request<E> request, RequestListener<E> listener) {
         request.execute(listener);
     }
 
@@ -103,7 +103,7 @@ public class RestApi {
             return poolRequest;
         }
 
-        public void execute(ResponsePoolListener listener) {
+        public void execute(RequestPoolListener listener) {
             PoolRequest poolRequest = build();
             poolRequest.execute(listener);
         }

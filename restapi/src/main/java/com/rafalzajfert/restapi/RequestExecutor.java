@@ -4,7 +4,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
 import com.rafalzajfert.restapi.exceptions.RequestException;
-import com.rafalzajfert.restapi.listeners.ResponseListener;
+import com.rafalzajfert.restapi.listeners.RequestListener;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
@@ -16,7 +16,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Wrapper for the {@link ThreadPoolExecutor} that allows to send signal to the {@link ResponseListener} if execution finished and wraps exceptions to the {@link RequestException}
+ * Wrapper for the {@link ThreadPoolExecutor} that allows to send signal to the {@link RequestListener} if execution finished and wraps exceptions to the {@link RequestException}
  *
  * @author Rafał Zajfert
  */
@@ -175,7 +175,7 @@ class RequestExecutor extends ThreadPoolExecutor {
      * @return a Future representing pending completion of the task
      */
     @NonNull
-    <T> RequestFuture<T> submit(@NonNull Callable<T> task, @Nullable final ResponseListener<T> listener) {
+    <T> RequestFuture<T> submit(@NonNull Callable<T> task, @Nullable final RequestListener<T> listener) {
         RequestFutureTask<T> futureTask = new RequestFutureTask<>(task, listener);
         execute(futureTask);
         return futureTask;
@@ -200,7 +200,7 @@ class RequestExecutor extends ThreadPoolExecutor {
     /**
      * {@inheritDoc}
      *
-     * @deprecated This method doesn't handle execution exception, use {@link #submit(Callable, ResponseListener)} or {@link #submit(Callable)} instead
+     * @deprecated This method doesn't handle execution exception, use {@link #submit(Callable, RequestListener)} or {@link #submit(Callable)} instead
      */
     @NonNull
     @Override
@@ -212,7 +212,7 @@ class RequestExecutor extends ThreadPoolExecutor {
     /**
      * {@inheritDoc}
      *
-     * @deprecated This method doesn't handle execution exception, use {@link #submit(Callable, ResponseListener)} or {@link #submit(Callable)} instead
+     * @deprecated This method doesn't handle execution exception, use {@link #submit(Callable, RequestListener)} or {@link #submit(Callable)} instead
      */
     @NonNull
     @Override

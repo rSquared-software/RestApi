@@ -4,7 +4,7 @@
 
 ```Gradle
 dependencies {
-    compile 'com.rafalzajfert:rest-api:1.0.4'
+    compile 'com.rafalzajfert:rest-api:1.0.6'
 }
 ```
 
@@ -16,7 +16,7 @@ dependencies {
 <dependency>
     <groupId>com.rafalzajfert</groupId>
     <artifactId>rest-api</artifactId>
-    <version>1.0.4</version>
+    <version>1.0.6</version>
 </dependency>
 ```
 
@@ -93,7 +93,7 @@ public class SetVersion extends PostRequest<BooleanResponse> implements Authoriz
 
 ###Execution
 ```java
-RestApi.execute(new SetVersion(version), new ResponseListener<BooleanResponse>() {
+RestApi.execute(new SetVersion(version), new RequestListener<BooleanResponse>() {
     @Override
     public void onSuccess(BooleanResponse result) {
         Logger.debug("Success!!");
@@ -121,7 +121,7 @@ try {
 RestApi.pool(RestApi.SERIAL_EXECUTOR) //or RestApi.THREAD_POOL_EXECUTOR
         .add(new GetVersion(), 1)
         .add(new SetVersion(version), 2)
-        .execute(new ResponsePoolListener() {
+        .execute(new RequestPoolListener() {
             @Override
             public void onTaskSuccess(Object result, int requestCode) {
                 //called for every request after sucessfully execution

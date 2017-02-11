@@ -1,7 +1,7 @@
 package com.rafalzajfert.restapi;
 
 import com.rafalzajfert.restapi.exceptions.RequestException;
-import com.rafalzajfert.restapi.listeners.ResponsePoolListener;
+import com.rafalzajfert.restapi.listeners.RequestPoolListener;
 
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -14,7 +14,7 @@ import java.util.Map;
  */
 class SerialPoolRequest extends PoolRequest<SerialPoolRequest> {
 
-    private ResponsePoolListener mListener;
+    private RequestPoolListener mListener;
     private Map<Integer, Object> mResults = new LinkedHashMap<>();
     private Iterator<Map.Entry<Integer, Request>> mExecuteIterator;
 
@@ -23,7 +23,7 @@ class SerialPoolRequest extends PoolRequest<SerialPoolRequest> {
     }
 
 
-    public void execute(ResponsePoolListener listener) {
+    public void execute(RequestPoolListener listener) {
         if (mExecuted) {
             throw new IllegalStateException("Already executed.");
         }
@@ -31,13 +31,16 @@ class SerialPoolRequest extends PoolRequest<SerialPoolRequest> {
         mExecuteIterator = mRequestPool.entrySet().iterator();
         mListener = listener;
 
+        if (mListener != null) {
+            mListener.onPreExecute();
+        }
         executeNext();
     }
 
     private void executeNext() {
         if (mExecuteIterator.hasNext()) {
             Map.Entry<Integer, Request> requestEntry = mExecuteIterator.next();
-            mExecutor.submit(requestEntry.getValue().createRequestTask(), new PoolResponseListener(requestEntry.getKey()) {
+            mExecutor.submit(requestEntry.getValue().createRequestTask(), new PoolRequestListener(requestEntry.getKey()) {
                 @Override
                 public void onSuccess(Object result) {
                     int requestCode = getRequestCode();
@@ -59,8 +62,11 @@ class SerialPoolRequest extends PoolRequest<SerialPoolRequest> {
             });
         } else {
             stopExecute();
-            if (mListener != null && mResults.size() == mRequestPool.size()) {
-                mListener.onSuccess(mResults);
+            if (mListener != null) {
+                if (mResults.size() == mRequestPool.size()) {
+                    mListener.onSuccess(mResults);
+                }
+                mListener.onPostExecute();
             }
         }
     }

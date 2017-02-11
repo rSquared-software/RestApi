@@ -6,7 +6,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
 import com.rafalzajfert.restapi.exceptions.RequestException;
-import com.rafalzajfert.restapi.listeners.ResponseListener;
+import com.rafalzajfert.restapi.listeners.RequestListener;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -24,7 +24,7 @@ import java.util.concurrent.TimeoutException;
 class RequestFutureTask<T> extends FutureTask<T> implements RequestFuture<T> {
 
     @Nullable
-    private ResponseListener<T> mListener;
+    private RequestListener<T> mListener;
 
     @Nullable
     private static Handler mHandler;
@@ -44,7 +44,7 @@ class RequestFutureTask<T> extends FutureTask<T> implements RequestFuture<T> {
      * @param callable the callable task
      * @param listener the listener that will be called when execution finished
      */
-    RequestFutureTask(@NonNull Callable<T> callable, @Nullable ResponseListener<T> listener) {
+    RequestFutureTask(@NonNull Callable<T> callable, @Nullable RequestListener<T> listener) {
         super(callable);
         mListener = listener;
     }
@@ -73,6 +73,19 @@ class RequestFutureTask<T> extends FutureTask<T> implements RequestFuture<T> {
         }
     }
 
+    @Override
+    public void run() {
+        if (mListener != null) {
+            getHandler().post(new Runnable() {
+                @Override
+                public void run() {
+                    mListener.onPreExecute();
+                }
+            });
+        }
+        super.run();
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -87,6 +100,7 @@ class RequestFutureTask<T> extends FutureTask<T> implements RequestFuture<T> {
                     } catch (RequestException e) {
                         mListener.onFailed(e);
                     }
+                    mListener.onPostExecute();
                 }
             });
         }

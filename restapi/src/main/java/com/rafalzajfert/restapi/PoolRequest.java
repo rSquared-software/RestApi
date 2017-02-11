@@ -1,10 +1,9 @@
 package com.rafalzajfert.restapi;
 
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 
-import com.rafalzajfert.restapi.listeners.ResponseListener;
-import com.rafalzajfert.restapi.listeners.ResponsePoolListener;
+import com.rafalzajfert.restapi.listeners.RequestListener;
+import com.rafalzajfert.restapi.listeners.RequestPoolListener;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -38,16 +37,16 @@ abstract class PoolRequest<P extends PoolRequest> {
 		return (P) this;
 	}
 
-	public abstract void execute(ResponsePoolListener listener);
+	public abstract void execute(RequestPoolListener listener);
 
 	public void stopExecute() {
 		mExecutor.shutdownNow();
 	}
 
-	abstract class PoolResponseListener implements ResponseListener{
+	abstract class PoolRequestListener extends RequestListener {
 		private int mRequestCode;
 
-		public PoolResponseListener(int requestCode) {
+		public PoolRequestListener(int requestCode) {
 			mRequestCode = requestCode;
 		}
 

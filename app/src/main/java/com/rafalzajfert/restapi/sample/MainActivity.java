@@ -6,21 +6,13 @@ import android.support.v7.app.AppCompatActivity;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.rafalzajfert.androidlogger.Level;
 import com.rafalzajfert.androidlogger.Logger;
 import com.rafalzajfert.restapi.Authorizable;
 import com.rafalzajfert.restapi.GetRequest;
-import com.rafalzajfert.restapi.InitialRequirements;
-import com.rafalzajfert.restapi.Request;
 import com.rafalzajfert.restapi.RestApi;
-import com.rafalzajfert.restapi.exceptions.DefaultErrorResponse;
-import com.rafalzajfert.restapi.exceptions.InitialRequirementsException;
 import com.rafalzajfert.restapi.exceptions.RequestException;
-import com.rafalzajfert.restapi.listeners.ResponseListener;
-import com.rafalzajfert.restapi.listeners.ResponsePoolListener;
-import com.rafalzajfert.restapi.serialization.JsonDeserializer;
-import com.rafalzajfert.restapi.serialization.JsonErrorDeserializer;
-import com.rafalzajfert.restapi.serialization.JsonSerializer;
+import com.rafalzajfert.restapi.listeners.RequestListener;
+import com.rafalzajfert.restapi.listeners.RequestPoolListener;
 
 import java.util.Calendar;
 import java.util.Map;
@@ -60,7 +52,7 @@ public class MainActivity extends AppCompatActivity {
         );
 
         GetVersion getVersion = new GetVersion();
-        RestApi.execute(getVersion, new ResponseListener<Version>() {
+        RestApi.execute(getVersion, new RequestListener<Version>() {
             @Override
             public void onSuccess(Version result) {
                 Logger.error("onSuccess");
@@ -97,12 +89,7 @@ public class MainActivity extends AppCompatActivity {
                 .add(new GetVersion(), 1)
                 .add(new GetVersion(), 2)
                 .add(new GetVersion(), 3)
-                .execute(new ResponsePoolListener() {
-                    @Override
-                    public void onTaskSuccess(Object result, int requestCode) {
-
-                    }
-
+                .execute(new RequestPoolListener() {
                     @Override
                     public void onSuccess(@NonNull Map<Integer, Object> result) {
 
@@ -119,7 +106,7 @@ public class MainActivity extends AppCompatActivity {
 //                .withAccessToken()
 //                .with("username", "Rafal")
 //                .with("min-age", 21)
-//                .execute(new ResponseListener<>() {
+//                .execute(new RequestListener<>() {
 //                    public void onSuccess(List<User> user) {
 //
 //                    }
@@ -133,7 +120,7 @@ public class MainActivity extends AppCompatActivity {
 //                .withUrlParam("id", 2)
 //                .with("username", "Rafal")
 //                .with("min-age", 21)
-//                .execute(new ResponseListener<>() {
+//                .execute(new RequestListener<>() {
 //                    public void onSuccess(SuccessResponse success) {
 //
 //                    }

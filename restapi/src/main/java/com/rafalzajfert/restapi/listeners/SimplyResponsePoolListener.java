@@ -1,30 +1,12 @@
 package com.rafalzajfert.restapi.listeners;
 
-import android.support.annotation.NonNull;
-
-import com.rafalzajfert.restapi.exceptions.RequestException;
-
-import java.util.Map;
-
 /**
  * TODO dokumentacja
  *
  * @author Rafal Zajfert
+ * @deprecated Use {@link RequestPoolListener} instead
  */
-public abstract class SimplyResponsePoolListener implements ResponsePoolListener {
+@Deprecated
+public abstract class SimplyResponsePoolListener extends RequestPoolListener {
 
-    /**
-     * {@inheritDoc}
-     */
-    public void onTaskSuccess(Object result, int requestCode){}
-
-    /**
-     * {@inheritDoc}
-     */
-    public void onSuccess(@NonNull Map<Integer, Object> result){}
-
-    /**
-     * {@inheritDoc}
-     */
-    public boolean onFailed(RequestException e, int requestCode){ return false; }
 }

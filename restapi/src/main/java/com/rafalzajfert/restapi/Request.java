@@ -8,7 +8,7 @@ import android.text.TextUtils;
 import com.rafalzajfert.restapi.exceptions.AccessTokenException;
 import com.rafalzajfert.restapi.exceptions.InitialRequirementsException;
 import com.rafalzajfert.restapi.exceptions.RequestException;
-import com.rafalzajfert.restapi.listeners.ResponseListener;
+import com.rafalzajfert.restapi.listeners.RequestListener;
 import com.rafalzajfert.restapi.serialization.Deserializer;
 import com.rafalzajfert.restapi.serialization.ErrorDeserializer;
 import com.rafalzajfert.restapi.serialization.Serializer;
@@ -107,12 +107,12 @@ public abstract class Request<T> {
     /**
      * {@inheritDoc}
      */
-    RequestFuture<T> execute(ResponseListener<T> listener) {
+    RequestFuture<T> execute(RequestListener<T> listener) {
         return execute(createRequestTask(), listener);
     }
 
     @NonNull
-    private RequestFuture<T> execute(Callable<T> task, ResponseListener<T> listener) {
+    private RequestFuture<T> execute(Callable<T> task, RequestListener<T> listener) {
         RequestFuture<T> future = mExecutor.submit(task, listener);
         mExecutor.shutdown();
         return future;
