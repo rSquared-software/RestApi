@@ -10,5 +10,10 @@ import com.rafalzajfert.restapi.Request;
  */
 @Deprecated
 public abstract class ResponseListener<T> extends RequestListener<T> {
-
+    /**
+     * @deprecated Use {@link RequestListener} instead
+     */
+    @Deprecated
+    public ResponseListener() {
+    }
 }

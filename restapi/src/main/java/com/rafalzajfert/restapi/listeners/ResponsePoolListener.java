@@ -8,5 +8,10 @@ package com.rafalzajfert.restapi.listeners;
  */
 @Deprecated
 public abstract class ResponsePoolListener extends RequestPoolListener {
-
+    /**
+     * @deprecated Use {@link RequestPoolListener} instead
+     */
+    @Deprecated
+    public ResponsePoolListener() {
+    }
 }

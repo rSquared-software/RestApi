@@ -2,6 +2,8 @@ package com.rafalzajfert.restapi.serialization;
 
 import android.support.annotation.CallSuper;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.text.TextUtils;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -16,6 +18,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
@@ -67,6 +70,9 @@ public class JsonDeserializer implements Deserializer {
     public <T> T read(Class<?> requestClass, String content) throws IOException {
         List<Class<?>> classes = getParameterClasses((ParameterizedType) requestClass.getGenericSuperclass());
         int classesCount = classes.size();
+        if (TextUtils.isEmpty(content)){
+            content = getEmptyJson(classes.get(0));
+        }
         if (classesCount > 1) {
             JavaType javaType = null;
             for (int i = classesCount - 1; i >= 1; i--) {
@@ -78,8 +84,21 @@ public class JsonDeserializer implements Deserializer {
             }
             return mObjectMapper.readerFor(javaType).readValue(content);
         } else {
+
             return mObjectMapper.readerFor(classes.get(0)).readValue(content);
         }
+    }
+
+    private String getEmptyJson(@NonNull Class<?> clazz){
+        if (isArray(clazz)){
+            return "[]";
+        }else{
+            return "{}";
+        }
+    }
+
+    private boolean isArray(@NonNull Class<?> clazz) {
+        return Collection.class.isAssignableFrom(clazz) || clazz.isArray();
     }
 
     private List<Class<?>> getParameterClasses(@NonNull ParameterizedType type) {

@@ -89,7 +89,7 @@ public abstract class Request<T> {
                 public okhttp3.Request authenticate(Route route, Response response) throws IOException {
                     okhttp3.Request.Builder requestBuilder = response.request()
                             .newBuilder()
-                            .header("BasicAuthorization", basicAuthorization.getBasicAuthorization());
+                            .header("Authorization", basicAuthorization.getBasicAuthorization());
                     return requestBuilder.build();
                 }
             });
@@ -278,8 +278,9 @@ public abstract class Request<T> {
         String content = response.body().string();
         RestApi.getLogger().v(content);
         if (isSuccess(response)) {
+            Class<? extends Request> aClass = getClass();
             //noinspection unchecked
-            return (T) getDeserializer().read(getClass(), content);
+            return (T) getDeserializer().read(aClass, content);
         } else {
             throw getErrorDeserializer().read(status, content);
         }
