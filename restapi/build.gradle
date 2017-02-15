@@ -42,7 +42,7 @@ publish {
     userOrg = 'rafalzajfert'
     groupId = 'com.rafalzajfert'
     artifactId = 'rest-api'
-    publishVersion = '1.0.7'
+    publishVersion = '1.0.8'
     desc = 'Library for simplify android rest api connecton'
     website = 'https://github.com/RafalZajfert/RestApi'
     bintrayUser = properties.getProperty("bintray.oss.user")

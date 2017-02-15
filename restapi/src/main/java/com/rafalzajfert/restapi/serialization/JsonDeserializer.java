@@ -68,7 +68,10 @@ public class JsonDeserializer implements Deserializer {
 
     @Override
     public <T> T read(Class<?> requestClass, String content) throws IOException {
-        List<Class<?>> classes = getParameterClasses((ParameterizedType) requestClass.getGenericSuperclass());
+        return readObject(getParameterClasses((ParameterizedType) requestClass.getGenericSuperclass()), content);
+    }
+
+    public <T> T readObject(List<Class<?>> classes, String content) throws IOException {
         int classesCount = classes.size();
         if (TextUtils.isEmpty(content)){
             content = getEmptyJson(classes.get(0));
