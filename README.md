@@ -8,7 +8,7 @@ dependencies {
 }
 ```
 
-[ ![Download](https://api.bintray.com/packages/rafalzajfert/maven/rest-api/images/download.svg) ](https://bintray.com/rafalzajfert/maven/rest-api/_latestVersion)
+[ ![Download](https://api.bintray.com/packages/rsquared/maven/rest-api/images/download.svg) ](https://bintray.com/rsquared/maven/rest-api/_latestVersion)
 
 ##Usage
 
