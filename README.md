@@ -4,21 +4,11 @@
 
 ```Gradle
 dependencies {
-    compile 'com.rafalzajfert:rest-api:1.0.8'
+    compile 'software.rsquared:rest-api:1.1.0'
 }
 ```
 
 [ ![Download](https://api.bintray.com/packages/rafalzajfert/maven/rest-api/images/download.svg) ](https://bintray.com/rafalzajfert/maven/rest-api/_latestVersion)
-
-##Maven Dependency
-
-```Maven
-<dependency>
-    <groupId>com.rafalzajfert</groupId>
-    <artifactId>rest-api</artifactId>
-    <version>1.0.8</version>
-</dependency>
-```
 
 ##Usage
 
@@ -143,11 +133,11 @@ RestApi.pool(RestApi.SERIAL_EXECUTOR) //or RestApi.THREAD_POOL_EXECUTOR
 
 ##Developed By
 
- * Rafal Zajfert - <rafal.zajfert@gmail.com>
+ * Rafal Zajfert - <rz@rsquared.software>
 
 ##License
 
-    Copyright 2016 Rafal Zajfert
+    Copyright 2017 rSquared s.c. R. Orlik, R. Zajfert
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
