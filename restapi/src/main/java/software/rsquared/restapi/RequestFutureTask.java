@@ -63,7 +63,11 @@ class RequestFutureTask<T> extends FutureTask<T> implements RequestFuture<T> {
         try {
             return super.get();
         } catch (ExecutionException | AccessTokenException | InterruptedException e) {
-            throw parseException(e);
+            RequestException exception = parseException(e);
+            if (errorCallback != null) {
+                errorCallback.onError(exception);
+            }
+            throw exception;
         }
     }
 
