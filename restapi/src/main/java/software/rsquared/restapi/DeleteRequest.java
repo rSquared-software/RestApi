@@ -24,7 +24,7 @@ public abstract class DeleteRequest<T> extends Request<T> {
 
     @Override
     protected Response request(HttpUrl url) throws IOException {
-        return mHttpClient.newCall(createRequest(url, getRequestBody())).execute();
+        return httpClient.newCall(createRequest(url, getRequestBody())).execute();
     }
 
 

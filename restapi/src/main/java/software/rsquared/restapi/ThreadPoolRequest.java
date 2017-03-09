@@ -13,31 +13,31 @@ import java.util.Map;
  */
 class ThreadPoolRequest extends PoolRequest<ThreadPoolRequest> {
 
-    private Map<Integer, Object> mResults = new LinkedHashMap<>();
-    private RequestPoolListener mListener;
+    private Map<Integer, Object> results = new LinkedHashMap<>();
+    private RequestPoolListener listener;
 
     public ThreadPoolRequest(int poolSize) {
         super(poolSize);
     }
 
     public void execute(RequestPoolListener listener) {
-        if (mExecuted) {
+        if (executed) {
             throw new IllegalStateException("Already executed.");
         }
-        mExecuted = true;
+        executed = true;
 
-        mListener = listener;
-        if (mListener != null) {
-            mListener.onPreExecute();
+        this.listener = listener;
+        if (this.listener != null) {
+            this.listener.onPreExecute();
         }
-        for (Map.Entry<Integer, Request> entry : mRequestPool.entrySet()) {
-            mExecutor.submit(entry.getValue().createRequestTask(), new PoolRequestListener(entry.getKey()) {
+        for (Map.Entry<Integer, Request> entry : requestPool.entrySet()) {
+            executor.submit(entry.getValue().createRequestTask(), ignoreErrorCallback ? null : RestApi.getConfiguration().getErrorCallback(), new PoolRequestListener(entry.getKey()) {
                 @Override
                 public void onSuccess(Object result) {
                     int requestCode = getRequestCode();
-                    mResults.put(requestCode, result);
-                    if (mListener != null) {
-                        mListener.onTaskSuccess(result, requestCode);
+                    results.put(requestCode, result);
+                    if (ThreadPoolRequest.this.listener != null) {
+                        ThreadPoolRequest.this.listener.onTaskSuccess(result, requestCode);
                     }
                     checkFinished();
                 }
@@ -45,26 +45,26 @@ class ThreadPoolRequest extends PoolRequest<ThreadPoolRequest> {
                 @Override
                 public void onFailed(RequestException e) {
                     int requestCode = getRequestCode();
-                    if (mListener != null && mListener.onFailed(e, requestCode)) {
+                    if (ThreadPoolRequest.this.listener != null && ThreadPoolRequest.this.listener.onFailed(e, requestCode)) {
                         stopExecute();
                     } else {
-                        mResults.put(requestCode, null);
+                        results.put(requestCode, null);
                     }
                     checkFinished();
                 }
 
                 private void checkFinished() {
-                    if (mResults.size() == mRequestPool.size()) {
+                    if (results.size() == requestPool.size()) {
                         stopExecute();
-                        if (mListener != null) {
-                            mListener.onSuccess(mResults);
-                            mListener.onPreExecute();
+                        if (ThreadPoolRequest.this.listener != null) {
+                            ThreadPoolRequest.this.listener.onSuccess(results);
+                            ThreadPoolRequest.this.listener.onPreExecute();
                         }
                     }
                 }
             });
         }
-        mExecutor.shutdown();
+        executor.shutdown();
     }
 
 }

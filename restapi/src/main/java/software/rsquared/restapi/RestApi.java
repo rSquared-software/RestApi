@@ -7,6 +7,7 @@ import android.text.TextUtils;
 
 import software.rsquared.restapi.exceptions.DefaultErrorResponse;
 import software.rsquared.restapi.exceptions.RequestException;
+import software.rsquared.restapi.listeners.ErrorCallback;
 import software.rsquared.restapi.listeners.RequestListener;
 import software.rsquared.restapi.listeners.RequestPoolListener;
 import software.rsquared.restapi.serialization.Deserializer;
@@ -53,7 +54,7 @@ public class RestApi {
     }
 
     static Logger getLogger() {
-        return sConfiguration.mLogger;
+        return sConfiguration.logger;
     }
 
     static boolean isConfigured() {
@@ -121,33 +122,35 @@ public class RestApi {
         public static final String HTTP = "http";
         public static final String HTTPS = "https";
 
-        private int mTimeout = 60 * 1000;
-        private String mScheme = HTTP;
-        private String mHost;
-        private int mPort = -1;
+        private int timeout = 60 * 1000;
+        private String scheme = HTTP;
+        private String host;
+        private int port = -1;
         @Nullable
-        private BasicAuthorization mBasicAuthorization;
+        private BasicAuthorization basicAuthorization;
         @Nullable
-        private InitialRequirements mInitialRequirements;
+        private InitialRequirements initialRequirements;
 
-        private Logger mLogger = new LogcatLogger();
-
-        @NonNull
-        private ErrorDeserializer mErrorDeserializer = new JsonErrorDeserializer();
+        private Logger logger = new LogcatLogger();
 
         @NonNull
-        private Deserializer mDeserializer = new JsonDeserializer();
+        private ErrorDeserializer errorDeserializer = new JsonErrorDeserializer();
 
         @NonNull
-        private Serializer mSerializer = new JsonSerializer();
+        private Deserializer deserializer = new JsonDeserializer();
 
-        private RestAuthorizationService mUserService;
+        @NonNull
+        private Serializer serializer = new JsonSerializer();
 
-        private Class<? extends DefaultErrorResponse> mErrorResponseClass;
+        private RestAuthorizationService userService;
 
-        private RestAuthorizationService mRestAuthorizationService;
+        private Class<? extends DefaultErrorResponse> errorResponseClass;
 
-        private Map<String, String> mHeaders = new HashMap<>();
+        private RestAuthorizationService restAuthorizationService;
+
+        private Map<String, String> headers = new HashMap<>();
+
+        private ErrorCallback errorCallback;
 
         /**
          * Timeout for the connections.
@@ -155,7 +158,7 @@ public class RestApi {
          * default: 1min
          */
         public int getTimeout() {
-            return mTimeout;
+            return timeout;
         }
 
         /**
@@ -164,7 +167,7 @@ public class RestApi {
          * default: 1min
          */
         public Config setTimeout(int timeout) {
-            mTimeout = timeout;
+            this.timeout = timeout;
             return this;
         }
 
@@ -174,7 +177,7 @@ public class RestApi {
          * default: http
          */
         public String getScheme() {
-            return mScheme;
+            return scheme;
         }
 
         /**
@@ -183,7 +186,7 @@ public class RestApi {
          * default: http
          */
         public Config setScheme(@NonNull String scheme) {
-            mScheme = scheme;
+            this.scheme = scheme;
             return this;
         }
 
@@ -192,7 +195,7 @@ public class RestApi {
          * address.
          */
         public String getHost() {
-            return mHost;
+            return host;
         }
 
         /**
@@ -200,7 +203,7 @@ public class RestApi {
          * address.
          */
         public Config setHost(@NonNull String host) {
-            mHost = host;
+            this.host = host;
             return this;
         }
 
@@ -211,7 +214,7 @@ public class RestApi {
          * otherwise.
          */
         public int getPort() {
-            return mPort;
+            return port;
         }
 
         /**
@@ -221,7 +224,7 @@ public class RestApi {
          * otherwise.
          */
         public Config setPort(int port) {
-            mPort = port;
+            this.port = port;
             return this;
         }
 
@@ -230,7 +233,7 @@ public class RestApi {
          */
         @Nullable
         public BasicAuthorization getBasicAuthorization() {
-            return mBasicAuthorization;
+            return basicAuthorization;
         }
 
         /**
@@ -238,10 +241,10 @@ public class RestApi {
          */
         public Config setAuthorization(@NonNull String user, @NonNull String password) {
             if (TextUtils.isEmpty(user) || TextUtils.isEmpty(password)) {
-                mBasicAuthorization = null;
+                basicAuthorization = null;
                 return this;
             }
-            mBasicAuthorization = new BasicAuthorization(user, password);
+            basicAuthorization = new BasicAuthorization(user, password);
             return this;
         }
 
@@ -250,14 +253,14 @@ public class RestApi {
          */
         @Nullable
         public InitialRequirements getInitialRequirements() {
-            return mInitialRequirements;
+            return initialRequirements;
         }
 
         /**
          * Initial restrictions for all requests
          */
         public Config setInitialRequirements(@NonNull InitialRequirements initialRequirements) {
-            mInitialRequirements = initialRequirements;
+            this.initialRequirements = initialRequirements;
             return this;
         }
 
@@ -268,7 +271,7 @@ public class RestApi {
          */
         @NonNull
         public Deserializer getDeserializer() {
-            return mDeserializer;
+            return deserializer;
         }
 
 
@@ -278,7 +281,7 @@ public class RestApi {
          * default: {@link JsonDeserializer JsonDeserializer}
          */
         public Config setDeserializer(@NonNull Deserializer deserializer) {
-            mDeserializer = deserializer;
+            this.deserializer = deserializer;
             return this;
         }
 
@@ -290,7 +293,7 @@ public class RestApi {
          */
         @NonNull
         public Serializer getSerializer() {
-            return mSerializer;
+            return serializer;
         }
 
 
@@ -300,7 +303,7 @@ public class RestApi {
          * default: {@link JsonSerializer JsonSerializer}
          */
         public Config setSerializer(@NonNull Serializer serializer) {
-            mSerializer = serializer;
+            this.serializer = serializer;
             return this;
         }
 
@@ -311,7 +314,7 @@ public class RestApi {
          */
         @Nullable
         public RestAuthorizationService getRestAuthorizationService() {
-            return mRestAuthorizationService;
+            return restAuthorizationService;
         }
 
         /**
@@ -320,7 +323,7 @@ public class RestApi {
          * default: null
          */
         public Config setRestAuthorizationService(RestAuthorizationService authorizationService) {
-            mRestAuthorizationService = authorizationService;
+            restAuthorizationService = authorizationService;
             return this;
         }
 
@@ -331,7 +334,7 @@ public class RestApi {
          */
         @NonNull
         public ErrorDeserializer getErrorDeserializer() {
-            return mErrorDeserializer;
+            return errorDeserializer;
         }
 
         /**
@@ -340,7 +343,7 @@ public class RestApi {
          * default: {@link JsonErrorDeserializer JsonErrorDeserializer}
          */
         public Config setErrorDeserializer(@NonNull ErrorDeserializer errorDeserializer) {
-            mErrorDeserializer = errorDeserializer;
+            this.errorDeserializer = errorDeserializer;
             return this;
         }
 
@@ -350,22 +353,31 @@ public class RestApi {
          * default: {@link Level#VERBOSE}
          */
         public Config setLogLevel(Level level) {
-            ((LogcatLogger) mLogger).setConfig(new LogcatLoggerConfig().setLevel(level));
+            ((LogcatLogger) logger).setConfig(new LogcatLoggerConfig().setLevel(level));
             return this;
         }
 
         public Config addHeader(String name, String value) {
-            mHeaders.put(name, value);
+            headers.put(name, value);
             return this;
         }
 
         public Config removeHeader(String name) {
-            mHeaders.remove(name);
+            headers.remove(name);
             return this;
         }
 
         public Map<String, String> getHeaders() {
-            return mHeaders;
+            return headers;
+        }
+
+        public ErrorCallback getErrorCallback() {
+            return errorCallback;
+        }
+
+        public Config setErrorCallback(ErrorCallback errorCallback) {
+            this.errorCallback = errorCallback;
+            return this;
         }
     }
 }

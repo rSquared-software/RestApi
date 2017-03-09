@@ -22,7 +22,7 @@ public abstract class GetRequest<E> extends Request<E> {
 
     @Override
     protected Response request(HttpUrl url) throws IOException {
-        return mHttpClient.newCall(createRequest(url)).execute();
+        return httpClient.newCall(createRequest(url)).execute();
     }
 
     /**

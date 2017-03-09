@@ -48,18 +48,19 @@ public abstract class Request<T> {
     protected static final String CONTENT_TYPE = "Content-Type";
     private static final ThreadLock LOCK = new ThreadLock();
 
-    protected final OkHttpClient mHttpClient;
-    private final RequestExecutor mExecutor;
-    private final List<Parameter> mBodyParameters = new ArrayList<>();
-    private final List<Parameter> mUrlParameters = new ArrayList<>();
-    private final Map<String, String> mHeaderMap = new HashMap<>();
-    private final Timer mTimer = new Timer();
-    private MediaType mMediaType = APPLICATION_URLENCODED;
-    private String[] mUrlSegments;
-    private String mUrl;
-    private long mMinExecutionTime;
-    private boolean mAuthorizedRequest;
-    private RestAuthorizationService mUserService;
+    protected final OkHttpClient httpClient;
+    private final RequestExecutor executor;
+    private final List<Parameter> bodyParameters = new ArrayList<>();
+    private final List<Parameter> urlParameters = new ArrayList<>();
+    private final Map<String, String> headerMap = new HashMap<>();
+    private final Timer timer = new Timer();
+    private MediaType mediaType = APPLICATION_URLENCODED;
+    private String[] urlSegments;
+    private String url;
+    private long minExecutionTime;
+    private boolean authorizedRequest;
+    private RestAuthorizationService userService;
+    private boolean ignoreErrorCallback;
 
     /**
      * Initial constructor for request. This constructor creates http client and prepare executor
@@ -69,9 +70,9 @@ public abstract class Request<T> {
             throw new IllegalStateException("RestApi must be configured before using requests");
         }
 
-        mHttpClient = createHttpClient();
-        mExecutor = new RequestExecutor(1, RestApi.getConfiguration().getTimeout());
-        mUserService = RestApi.getConfiguration().getRestAuthorizationService();
+        httpClient = createHttpClient();
+        executor = new RequestExecutor(1, RestApi.getConfiguration().getTimeout());
+        userService = RestApi.getConfiguration().getRestAuthorizationService();
     }
 
     @NonNull
@@ -113,8 +114,8 @@ public abstract class Request<T> {
 
     @NonNull
     private RequestFuture<T> execute(Callable<T> task, RequestListener<T> listener) {
-        RequestFuture<T> future = mExecutor.submit(task, listener);
-        mExecutor.shutdown();
+        RequestFuture<T> future = executor.submit(task, ignoreErrorCallback ? null : RestApi.getConfiguration().getErrorCallback(), listener);
+        executor.shutdown();
         return future;
     }
 
@@ -122,7 +123,7 @@ public abstract class Request<T> {
      * {@inheritDoc}
      */
     public void cancel() {
-        mExecutor.shutdownNow();
+        executor.shutdownNow();
     }
 
     /**
@@ -135,16 +136,16 @@ public abstract class Request<T> {
         return new Callable<T>() {
             @Override
             public T call() throws Exception {
-                mTimer.start();
+                timer.start();
                 T result = executeRequest();
-                double time = mTimer.getElapsedTime();
-                if (time < mMinExecutionTime) {
+                double time = timer.getElapsedTime();
+                if (time < minExecutionTime) {
                     try {
-                        Thread.sleep((long) (mMinExecutionTime - time));
+                        Thread.sleep((long) (minExecutionTime - time));
                     } catch (InterruptedException ignored) {
                     }
                 }
-                RestApi.getLogger().vF("%s execution took: %.3fms", getClassCodeAnchor(), mTimer.getElapsedTime());
+                RestApi.getLogger().vF("%s execution took: %.3fms", getClassCodeAnchor(), timer.getElapsedTime());
                 return result;
             }
         };
@@ -217,11 +218,11 @@ public abstract class Request<T> {
         if (!needAuthorization()) {
             return;
         }
-        if (mUserService == null) {
+        if (userService == null) {
             throw new IllegalArgumentException("Request is not properly configured to use UserService. Use method RestApi.Config.setRestAuthorizationService(RestAuthorizationService) to provide user service implementation");
         }
 
-        if (!mUserService.isLogged()) {
+        if (!userService.isLogged()) {
             throw new AccessTokenException(Request.this.getClass().getSimpleName() + " required user to be logged in.");
         }
 
@@ -230,7 +231,7 @@ public abstract class Request<T> {
         } catch (InterruptedException e) {
             throw new RuntimeException("Locked thread interrupted!", e);
         }
-        if (mUserService.isTokenValid()) {
+        if (userService.isTokenValid()) {
             return;
         }
         try {
@@ -239,13 +240,17 @@ public abstract class Request<T> {
             throw new RuntimeException("Locked thread interrupted!", e);
         }
         try {
-            mUserService.refreshToken();
+            userService.refreshToken();
         } catch (Exception e) {
-            mUserService.logout();
+            userService.logout();
             throw new AccessTokenException("Problem during obtaining refresh token", e);
         } finally {
             LOCK.unlock();
         }
+    }
+
+    public void ignoreErrorCallback() {
+        ignoreErrorCallback = true;
     }
 
     /**
@@ -259,7 +264,7 @@ public abstract class Request<T> {
      * Mark that this request need (or not) authorization via {@link #ACCESS_TOKEN}
      */
     public void setIsAuthorizedRequest(boolean authorizedRequest) {
-        mAuthorizedRequest = authorizedRequest;
+        this.authorizedRequest = authorizedRequest;
     }
 
     /**
@@ -268,7 +273,7 @@ public abstract class Request<T> {
      * @return true if {@link #setIsAuthorizedRequest()} was called or {@link Request} implements {@link Authorizable} interface
      */
     protected boolean needAuthorization() {
-        return mAuthorizedRequest || this instanceof Authorizable;
+        return authorizedRequest || this instanceof Authorizable;
     }
 
     /**
@@ -321,20 +326,20 @@ public abstract class Request<T> {
      * @see #putUrlParameter(String, Object)
      */
     protected HttpUrl getUrl() {
-        if (mUrlSegments == null) {
+        if (urlSegments == null) {
             throw new IllegalStateException("Set url in " + this.getClass().getSimpleName() + " prepareRequest method");
         }
         HttpUrl url;
-        if (!TextUtils.isEmpty(mUrl)) {
-            if (needAuthorization() && mUserService != null && mUserService.getAuthorization() != null) {
-                String accessToken = ACCESS_TOKEN + "=" + mUserService.getAuthorization().getAccessToken();
-                if (!mUrl.contains(accessToken)) {
-                    int questionMarkPosition = mUrl.indexOf('?');
+        if (!TextUtils.isEmpty(this.url)) {
+            if (needAuthorization() && userService != null && userService.getAuthorization() != null) {
+                String accessToken = ACCESS_TOKEN + "=" + userService.getAuthorization().getAccessToken();
+                if (!this.url.contains(accessToken)) {
+                    int questionMarkPosition = this.url.indexOf('?');
                     char paramSeparator = questionMarkPosition >= 0 ? '&' : '?';
-                    mUrl += paramSeparator + accessToken;
+                    this.url += paramSeparator + accessToken;
                 }
             }
-            url = HttpUrl.parse(mUrl);
+            url = HttpUrl.parse(this.url);
 
         } else {
             HttpUrl.Builder builder = new HttpUrl.Builder();
@@ -349,15 +354,15 @@ public abstract class Request<T> {
                 builder.username(basicAuthorization.getUser())
                         .password(basicAuthorization.getPassword());
             }
-            for (String segment : mUrlSegments) {
+            for (String segment : urlSegments) {
                 builder.addPathSegment(segment);
             }
-            for (Parameter param : mUrlParameters) {
+            for (Parameter param : urlParameters) {
                 builder.addQueryParameter(param.getName(), String.valueOf(param.getValue()));
             }
 
-            if (needAuthorization() && mUserService != null && mUserService.getAuthorization() != null) {
-                builder.addQueryParameter(ACCESS_TOKEN, mUserService.getAuthorization().getAccessToken());
+            if (needAuthorization() && userService != null && userService.getAuthorization() != null) {
+                builder.addQueryParameter(ACCESS_TOKEN, userService.getAuthorization().getAccessToken());
             }
             url = builder.build();
         }
@@ -368,14 +373,14 @@ public abstract class Request<T> {
      * Set api method url. If url will be sets by this method then all calls {@link #setUrlSegments(String...) setUrlSegments}, {@link #putParameter(String, Object) putParameter} or {@link #putUrlParameter(String, Object) putUrlParameter} will be ignored
      */
     public void setUrl(String url) {
-        mUrl = url;
+        this.url = url;
     }
 
     /**
      * Set minimal execution time of this request. Execution of this request will take at least <code>millis</code> milliseconds
      */
     public void setMinExecutionTime(long millis) {
-        this.mMinExecutionTime = millis;
+        this.minExecutionTime = millis;
     }
 
     /**
@@ -385,43 +390,43 @@ public abstract class Request<T> {
      *                    for address http://example.com/get/user  this method should be invoked: {@code setUrlSegments("get", "user");}
      */
     protected void setUrlSegments(String... urlSegments) {
-        mUrlSegments = urlSegments;
+        this.urlSegments = urlSegments;
     }
 
     /**
      * Adds parameter to URL's query string.
      */
     protected void putUrlParameter(@NonNull String name, @Nullable Object value) {
-        mUrlParameters.addAll(getSerializer().serialize(name, value));
+        urlParameters.addAll(getSerializer().serialize(name, value));
     }
 
     /**
      * Adds parameter to URL's query string.
      */
     protected void putUrlParameter(@Nullable Object value) {
-        mUrlParameters.addAll(getSerializer().serialize(value));
+        urlParameters.addAll(getSerializer().serialize(value));
     }
 
     /**
      * Adds parameter to request body
      */
     protected void putParameter(@NonNull String name, @Nullable Object value) {
-        mBodyParameters.addAll(getSerializer().serialize(name, value));
+        bodyParameters.addAll(getSerializer().serialize(name, value));
     }
 
     /**
      * Adds parameter to request body
      */
     protected void putParameter(@Nullable Object value) {
-        mBodyParameters.addAll(getSerializer().serialize(value));
+        bodyParameters.addAll(getSerializer().serialize(value));
     }
 
     protected void addHeader(@NonNull String name, @NonNull String value) {
-        mHeaderMap.put(name, value);
+        headerMap.put(name, value);
     }
 
     protected Map<String, String> getHeaders() {
-        Map<String, String> headers = new HashMap<>(mHeaderMap);
+        Map<String, String> headers = new HashMap<>(headerMap);
         headers.putAll(RestApi.getConfiguration().getHeaders());
         return headers;
     }
@@ -430,7 +435,7 @@ public abstract class Request<T> {
      * Removes parameter from request body
      */
     protected void removeParameter(@NonNull String key) {
-        Iterator<Parameter> iterator = mBodyParameters.iterator();
+        Iterator<Parameter> iterator = bodyParameters.iterator();
         while (iterator.hasNext()) {
             Parameter parameter = iterator.next();
             if (key.equals(parameter.getName())) {
@@ -444,7 +449,7 @@ public abstract class Request<T> {
      * Removes parameter from URL's query string.
      */
     protected void removeUrlParameter(@NonNull String key) {
-        Iterator<Parameter> iterator = mUrlParameters.iterator();
+        Iterator<Parameter> iterator = urlParameters.iterator();
         while (iterator.hasNext()) {
             Parameter parameter = iterator.next();
             if (key.equals(parameter.getName())) {
@@ -474,7 +479,7 @@ public abstract class Request<T> {
      * Checks if at least one of the parameters is a file
      */
     protected boolean isMultipartRequest() {
-        for (Parameter parameter : mBodyParameters) {
+        for (Parameter parameter : bodyParameters) {
             if (parameter.isFile()) {
                 return true;
             }
@@ -487,7 +492,7 @@ public abstract class Request<T> {
         MultipartBody.Builder bodyBuilder = new MultipartBody.Builder();
         bodyBuilder.setType(MULTIPART_FORM_DATA);
 
-        Iterator<Parameter> iterator = mBodyParameters.iterator();
+        Iterator<Parameter> iterator = bodyParameters.iterator();
         while (iterator.hasNext()) {
             Parameter parameter = iterator.next();
             if (parameter.isFile()) {
@@ -501,7 +506,7 @@ public abstract class Request<T> {
                 iterator.remove();
             }
         }
-        for (Parameter parameter : mBodyParameters) {
+        for (Parameter parameter : bodyParameters) {
             String name = parameter.getName();
             String value = String.valueOf(parameter.getValue());
             RestApi.getLogger().d(name + ":", value);
@@ -524,7 +529,7 @@ public abstract class Request<T> {
     @NonNull
     private RequestBody getFormBody() {
         FormBody.Builder bodyBuilder = new FormBody.Builder();
-        for (Parameter parameter : mBodyParameters) {
+        for (Parameter parameter : bodyParameters) {
             String name = parameter.getName();
             String value = String.valueOf(parameter.getValue());
             RestApi.getLogger().d(name + ":", value);
@@ -536,7 +541,7 @@ public abstract class Request<T> {
     }
 
     protected MediaType getMediaType() {
-        return isMultipartRequest() ? MULTIPART_FORM_DATA : mMediaType;
+        return isMultipartRequest() ? MULTIPART_FORM_DATA : mediaType;
     }
 
     protected Serializer getSerializer() {

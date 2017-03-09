@@ -7,6 +7,7 @@ import android.support.annotation.Nullable;
 
 import software.rsquared.restapi.exceptions.AccessTokenException;
 import software.rsquared.restapi.exceptions.RequestException;
+import software.rsquared.restapi.listeners.ErrorCallback;
 import software.rsquared.restapi.listeners.RequestListener;
 
 import java.util.concurrent.Callable;
@@ -24,19 +25,22 @@ import java.util.concurrent.TimeoutException;
  */
 class RequestFutureTask<T> extends FutureTask<T> implements RequestFuture<T> {
 
-    @Nullable
-    private RequestListener<T> mListener;
+    private final ErrorCallback errorCallback;
 
     @Nullable
-    private static Handler mHandler;
+    private RequestListener<T> listener;
+
+    @Nullable
+    private static Handler handler;
 
     /**
      * Creates a FutureTask that will, upon running, execute the given Callable.
      *
      * @param callable the callable task
      */
-    RequestFutureTask(@NonNull Callable<T> callable) {
+    RequestFutureTask(@NonNull Callable<T> callable, @Nullable ErrorCallback errorCallback) {
         super(callable);
+        this.errorCallback = errorCallback;
     }
 
     /**
@@ -45,9 +49,10 @@ class RequestFutureTask<T> extends FutureTask<T> implements RequestFuture<T> {
      * @param callable the callable task
      * @param listener the listener that will be called when execution finished
      */
-    RequestFutureTask(@NonNull Callable<T> callable, @Nullable RequestListener<T> listener) {
+    RequestFutureTask(@NonNull Callable<T> callable, ErrorCallback errorCallback, @Nullable RequestListener<T> listener) {
         super(callable);
-        mListener = listener;
+        this.errorCallback = errorCallback;
+        this.listener = listener;
     }
 
     /**
@@ -70,17 +75,21 @@ class RequestFutureTask<T> extends FutureTask<T> implements RequestFuture<T> {
         try {
             return super.get(timeout, unit);
         } catch (ExecutionException | AccessTokenException | InterruptedException | TimeoutException e) {
-            throw parseException(e);
+            RequestException exception = parseException(e);
+            if (errorCallback != null) {
+                errorCallback.onError(exception);
+            }
+            throw exception;
         }
     }
 
     @Override
     public void run() {
-        if (mListener != null) {
+        if (listener != null) {
             getHandler().post(new Runnable() {
                 @Override
                 public void run() {
-                    mListener.onPreExecute();
+                    listener.onPreExecute();
                 }
             });
         }
@@ -92,16 +101,16 @@ class RequestFutureTask<T> extends FutureTask<T> implements RequestFuture<T> {
      */
     @Override
     protected void done() {
-        if (mListener != null) {
+        if (listener != null) {
             getHandler().post(new Runnable() {
                 @Override
                 public void run() {
                     try {
-                        mListener.onSuccess(get());
+                        listener.onSuccess(get());
                     } catch (RequestException e) {
-                        mListener.onFailed(e);
+                        listener.onFailed(e);
                     }
-                    mListener.onPostExecute();
+                    listener.onPostExecute();
                 }
             });
         }
@@ -133,10 +142,10 @@ class RequestFutureTask<T> extends FutureTask<T> implements RequestFuture<T> {
      */
     @NonNull
     private Handler getHandler() {
-        if (mHandler == null) {
-            mHandler = new Handler(Looper.getMainLooper());
+        if (handler == null) {
+            handler = new Handler(Looper.getMainLooper());
         }
-        return mHandler;
+        return handler;
     }
 
 }

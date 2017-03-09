@@ -14,9 +14,9 @@ import java.util.Map;
  */
 class SerialPoolRequest extends PoolRequest<SerialPoolRequest> {
 
-    private RequestPoolListener mListener;
+    private RequestPoolListener listener;
     private Map<Integer, Object> mResults = new LinkedHashMap<>();
-    private Iterator<Map.Entry<Integer, Request>> mExecuteIterator;
+    private Iterator<Map.Entry<Integer, Request>> executeIterator;
 
     public SerialPoolRequest() {
         super(1);
@@ -24,29 +24,29 @@ class SerialPoolRequest extends PoolRequest<SerialPoolRequest> {
 
 
     public void execute(RequestPoolListener listener) {
-        if (mExecuted) {
+        if (executed) {
             throw new IllegalStateException("Already executed.");
         }
-        mExecuted = true;
-        mExecuteIterator = mRequestPool.entrySet().iterator();
-        mListener = listener;
+        executed = true;
+        executeIterator = requestPool.entrySet().iterator();
+        this.listener = listener;
 
-        if (mListener != null) {
-            mListener.onPreExecute();
+        if (this.listener != null) {
+            this.listener.onPreExecute();
         }
         executeNext();
     }
 
     private void executeNext() {
-        if (mExecuteIterator.hasNext()) {
-            Map.Entry<Integer, Request> requestEntry = mExecuteIterator.next();
-            mExecutor.submit(requestEntry.getValue().createRequestTask(), new PoolRequestListener(requestEntry.getKey()) {
+        if (executeIterator.hasNext()) {
+            Map.Entry<Integer, Request> requestEntry = executeIterator.next();
+            executor.submit(requestEntry.getValue().createRequestTask(), ignoreErrorCallback ? null : RestApi.getConfiguration().getErrorCallback(), new PoolRequestListener(requestEntry.getKey()) {
                 @Override
                 public void onSuccess(Object result) {
                     int requestCode = getRequestCode();
                     mResults.put(requestCode, result);
-                    if (mListener != null) {
-                        mListener.onTaskSuccess(result, requestCode);
+                    if (listener != null) {
+                        listener.onTaskSuccess(result, requestCode);
                     }
                     executeNext();
                 }
@@ -54,7 +54,7 @@ class SerialPoolRequest extends PoolRequest<SerialPoolRequest> {
                 @Override
                 public void onFailed(RequestException e) {
                     int requestCode = getRequestCode();
-                    if (mListener == null || !mListener.onFailed(e, requestCode)) {
+                    if (listener == null || !listener.onFailed(e, requestCode)) {
                         mResults.put(requestCode, null);
                         executeNext();
                     }
@@ -62,11 +62,11 @@ class SerialPoolRequest extends PoolRequest<SerialPoolRequest> {
             });
         } else {
             stopExecute();
-            if (mListener != null) {
-                if (mResults.size() == mRequestPool.size()) {
-                    mListener.onSuccess(mResults);
+            if (listener != null) {
+                if (mResults.size() == requestPool.size()) {
+                    listener.onSuccess(mResults);
                 }
-                mListener.onPostExecute();
+                listener.onPostExecute();
             }
         }
     }

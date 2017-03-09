@@ -10,33 +10,33 @@ public class Parameter {
 
     @SuppressWarnings("WeakerAccess")
     public static final String FILE_REGEX = "^_file\\{(.+)\\}$";
-    private String mName;
+    private String name;
 
-    private Object mValue;
+    private Object value;
 
     Parameter() {
     }
 
     public Parameter(String name, Object value) {
-        mName = name;
-        mValue = value;
+        this.name = name;
+        this.value = value;
     }
 
     //region Getters and Setters
     String getName() {
-        return mName;
+        return name;
     }
 
     void setName(String name) {
-        mName = name;
+        this.name = name;
     }
 
     Object getValue() {
-        return mValue;
+        return value;
     }
 
     void setValue(Object value) {
-        mValue = value;
+        this.value = value;
     }
     //endregion
 
@@ -44,10 +44,10 @@ public class Parameter {
      * Checks if value is path to file (string matches "_file{...}")
      */
     boolean isFile() {
-        return mValue instanceof String && ((String) mValue).matches(FILE_REGEX);
+        return value instanceof String && ((String) value).matches(FILE_REGEX);
     }
 
     String getFilePath() {
-        return ((String) mValue).replaceAll(FILE_REGEX, "$1");
+        return ((String) value).replaceAll(FILE_REGEX, "$1");
     }
 }

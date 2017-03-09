@@ -20,32 +20,32 @@ public class DefaultErrorResponse {
 	 * The name of the error
 	 */
 	@JsonProperty("name")
-	private String mName;
+	private String name;
 
 	/**
 	 * Message of the error
 	 */
 	@JsonProperty("message")
-	private String mMessage;
+	private String message;
 
 	/**
 	 * Custom error code (not response code)
 	 */
 	@JsonProperty("code")
-	private int mErrorCode;
+	private int errorCode;
 
 	/**
 	 * Map with fields errors
 	 */
 	@JsonProperty("errors")
-	private Map<String, String[]> mErrors = new HashMap<>();
+	private Map<String, String[]> errors = new HashMap<>();
 
 	@JsonSetter("errors")
 	public void setErrors(Map<String, List<Object>> errors) {
 		if (errors == null) {
 			return;
 		}
-		mErrors.putAll(parseErrorsMap(null, errors));
+		this.errors.putAll(parseErrorsMap(null, errors));
 
 	}
 
@@ -81,18 +81,18 @@ public class DefaultErrorResponse {
 	}
 
 	public String getName() {
-		return mName;
+		return name;
 	}
 
 	public String getMessage() {
-		return mMessage;
+		return message;
 	}
 
 	public int getErrorCode() {
-		return mErrorCode;
+		return errorCode;
 	}
 
 	public Map<String, String[]> getErrors() {
-		return mErrors;
+		return errors;
 	}
 }

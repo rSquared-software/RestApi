@@ -4,6 +4,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
 import software.rsquared.restapi.exceptions.RequestException;
+import software.rsquared.restapi.listeners.ErrorCallback;
 import software.rsquared.restapi.listeners.RequestListener;
 
 import java.util.concurrent.BlockingQueue;
@@ -175,8 +176,8 @@ class RequestExecutor extends ThreadPoolExecutor {
      * @return a Future representing pending completion of the task
      */
     @NonNull
-    <T> RequestFuture<T> submit(@NonNull Callable<T> task, @Nullable final RequestListener<T> listener) {
-        RequestFutureTask<T> futureTask = new RequestFutureTask<>(task, listener);
+    <T> RequestFuture<T> submit(@NonNull Callable<T> task, @Nullable ErrorCallback errorCallback, @Nullable final RequestListener<T> listener) {
+        RequestFutureTask<T> futureTask = new RequestFutureTask<>(task, errorCallback, listener);
         execute(futureTask);
         return futureTask;
     }
@@ -191,7 +192,7 @@ class RequestExecutor extends ThreadPoolExecutor {
     @NonNull
     @Override
     public <T> RequestFuture<T> submit(@NonNull Callable<T> task) {
-        RequestFutureTask<T> futureTask = new RequestFutureTask<>(task);
+        RequestFutureTask<T> futureTask = new RequestFutureTask<>(task, null);
         execute(futureTask);
         return futureTask;
     }
@@ -200,7 +201,7 @@ class RequestExecutor extends ThreadPoolExecutor {
     /**
      * {@inheritDoc}
      *
-     * @deprecated This method doesn't handle execution exception, use {@link #submit(Callable, RequestListener)} or {@link #submit(Callable)} instead
+     * @deprecated This method doesn't handle execution exception, use {@link #submit(Callable, ErrorCallback, RequestListener)} or {@link #submit(Callable)} instead
      */
     @NonNull
     @Override
@@ -212,7 +213,7 @@ class RequestExecutor extends ThreadPoolExecutor {
     /**
      * {@inheritDoc}
      *
-     * @deprecated This method doesn't handle execution exception, use {@link #submit(Callable, RequestListener)} or {@link #submit(Callable)} instead
+     * @deprecated This method doesn't handle execution exception, use {@link #submit(Callable, ErrorCallback, RequestListener)} or {@link #submit(Callable)} instead
      */
     @NonNull
     @Override

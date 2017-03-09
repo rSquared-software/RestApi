@@ -15,24 +15,26 @@ import java.util.Map;
  */
 abstract class PoolRequest<P extends PoolRequest> {
 
-	protected Map<Integer, Request> mRequestPool = new LinkedHashMap<>();
+	protected Map<Integer, Request> requestPool = new LinkedHashMap<>();
 
-	protected boolean mExecuted;
+	protected boolean ignoreErrorCallback;
 
-	protected RequestExecutor mExecutor;
+	protected boolean executed;
+
+	protected RequestExecutor executor;
 
 	protected PoolRequest(int poolSize){
-		mExecutor = new RequestExecutor(poolSize, 0L);
+		executor = new RequestExecutor(poolSize, 0L);
 	}
 
 	public P addTask(@NonNull Request request, int requestCode) {
-		if (mExecuted) {
+		if (executed) {
 			throw new IllegalStateException("New task cannot be added to the pool after executing.");
 		}
-		if (mRequestPool.containsKey(requestCode)) {
+		if (requestPool.containsKey(requestCode)) {
 			throw new IllegalArgumentException("Task with this requestCode (" + requestCode + ") was already added.");
 		}
-		mRequestPool.put(requestCode, request);
+		requestPool.put(requestCode, request);
 		//noinspection unchecked
 		return (P) this;
 	}
@@ -40,18 +42,24 @@ abstract class PoolRequest<P extends PoolRequest> {
 	public abstract void execute(RequestPoolListener listener);
 
 	public void stopExecute() {
-		mExecutor.shutdownNow();
+		executor.shutdownNow();
+	}
+
+	public P ignoreErrorCallback() {
+		ignoreErrorCallback = true;
+		//noinspection unchecked
+		return (P) this;
 	}
 
 	abstract class PoolRequestListener extends RequestListener {
-		private int mRequestCode;
+		private int requestCode;
 
 		public PoolRequestListener(int requestCode) {
-			mRequestCode = requestCode;
+			this.requestCode = requestCode;
 		}
 
 		public int getRequestCode() {
-			return mRequestCode;
+			return requestCode;
 		}
 	}
 

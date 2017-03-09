@@ -28,24 +28,24 @@ import java.util.List;
  */
 public class JsonDeserializer implements Deserializer {
 
-    private final ObjectMapper mObjectMapper = new ObjectMapper();
-    private final Config mConfig;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final Config config;
 
     public JsonDeserializer() {
         this(new Config());
     }
 
     public JsonDeserializer(@NonNull Config config) {
-        mConfig = config;
-        mObjectMapper.setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
+        this.config = config;
+        objectMapper.setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
         SimpleModule module = new SimpleModule();
         setupModule(module);
-        mObjectMapper.registerModule(module);
+        objectMapper.registerModule(module);
     }
 
     @CallSuper
     protected void setupModule(SimpleModule module) {
-        if (mConfig.mTimeInSeconds) {
+        if (config.timeInSeconds) {
             module.addDeserializer(Calendar.class, new com.fasterxml.jackson.databind.JsonDeserializer<Calendar>() {
                 @Override
                 public Calendar deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JsonProcessingException {
@@ -79,15 +79,15 @@ public class JsonDeserializer implements Deserializer {
             JavaType javaType = null;
             for (int i = classesCount - 1; i >= 1; i--) {
                 if (javaType == null) {
-                    javaType = mObjectMapper.getTypeFactory().constructParametricType(classes.get(i - 1), classes.get(i));
+                    javaType = objectMapper.getTypeFactory().constructParametricType(classes.get(i - 1), classes.get(i));
                 } else {
-                    javaType = mObjectMapper.getTypeFactory().constructParametricType(classes.get(i - 1), javaType);
+                    javaType = objectMapper.getTypeFactory().constructParametricType(classes.get(i - 1), javaType);
                 }
             }
-            return mObjectMapper.readerFor(javaType).readValue(content);
+            return objectMapper.readerFor(javaType).readValue(content);
         } else {
 
-            return mObjectMapper.readerFor(classes.get(0)).readValue(content);
+            return objectMapper.readerFor(classes.get(0)).readValue(content);
         }
     }
 
@@ -116,13 +116,13 @@ public class JsonDeserializer implements Deserializer {
     }
 
     public static class Config {
-        private boolean mTimeInSeconds;
+        private boolean timeInSeconds;
 
         /**
          * Set true if time should be serialized to unix time seconds
          */
         public Config setTimeInSeconds(boolean timeInSeconds) {
-            mTimeInSeconds = timeInSeconds;
+            this.timeInSeconds = timeInSeconds;
             return this;
         }
 

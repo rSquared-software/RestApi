@@ -29,21 +29,21 @@ import java.util.Map;
  * @author Rafal Zajfert
  */
 public class JsonSerializer implements Serializer {
-    private final ObjectMapper mObjectMapper = new ObjectMapper();
-    private final Config mConfig;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final Config config;
 
     public JsonSerializer() {
         this(new Config());
     }
 
     public JsonSerializer(@NonNull Config config) {
-        mConfig = config;
-        mObjectMapper.setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
+        this.config = config;
+        objectMapper.setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
         SimpleModule module = new SimpleModule();
         setupModule(module);
-        mObjectMapper.registerModule(module);
-        if (!mConfig.mNullValues) {
-            mObjectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+        objectMapper.registerModule(module);
+        if (!this.config.nullValues) {
+            objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
         }
     }
 
@@ -56,7 +56,7 @@ public class JsonSerializer implements Serializer {
             }
         });
 
-        if (mConfig.mIntBoolean) {
+        if (config.intBoolean) {
             module.addSerializer(Boolean.class, new com.fasterxml.jackson.databind.JsonSerializer<Boolean>() {
                 @Override
                 public void serialize(Boolean value, JsonGenerator gen, SerializerProvider serializers) throws IOException, JsonProcessingException {
@@ -83,7 +83,7 @@ public class JsonSerializer implements Serializer {
                 }
             });
         }
-        if (mConfig.mTimeInSeconds) {
+        if (config.timeInSeconds) {
             module.addSerializer(Calendar.class, new com.fasterxml.jackson.databind.JsonSerializer<Calendar>() {
                 @Override
                 public void serialize(Calendar value, JsonGenerator gen, SerializerProvider serializers) throws IOException, JsonProcessingException {
@@ -117,7 +117,7 @@ public class JsonSerializer implements Serializer {
     @Override
     public <T> List<Parameter> serialize(@Nullable String name, T object) {
         List<Parameter> parameters = new ArrayList<>();
-        JsonNode jsonNode = mObjectMapper.valueToTree(object);
+        JsonNode jsonNode = objectMapper.valueToTree(object);
         addParameter(name, jsonNode, parameters);
         return parameters;
     }
@@ -157,15 +157,15 @@ public class JsonSerializer implements Serializer {
     }
 
     public static class Config {
-        private boolean mTimeInSeconds;
-        private boolean mIntBoolean;
-        private boolean mNullValues;
+        private boolean timeInSeconds;
+        private boolean intBoolean;
+        private boolean nullValues;
 
         /**
          * Set true if time should be serialized to unix time seconds
          */
         public Config setTimeInSeconds(boolean timeInSeconds) {
-            mTimeInSeconds = timeInSeconds;
+            this.timeInSeconds = timeInSeconds;
             return this;
         }
 
@@ -173,7 +173,7 @@ public class JsonSerializer implements Serializer {
          * Set true if booleans should be serialized to 0 / 1
          */
         public Config setIntBoolean(boolean intBoolean) {
-            mIntBoolean = intBoolean;
+            this.intBoolean = intBoolean;
             return this;
         }
 
@@ -181,7 +181,7 @@ public class JsonSerializer implements Serializer {
          * Set true if non null values should be serialized
          */
         public Config setSerializeNullValues(boolean nonNullValues) {
-            mNullValues = nonNullValues;
+            nullValues = nonNullValues;
             return this;
         }
     }

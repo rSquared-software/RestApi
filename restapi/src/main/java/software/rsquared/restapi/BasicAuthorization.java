@@ -8,33 +8,33 @@ import okhttp3.Credentials;
  */
 class BasicAuthorization {
 
-    private String mUser;
+    private String user;
 
-    private String mPassword;
+    private String password;
 
     BasicAuthorization(String user, String password) {
-        mUser = user;
-        mPassword = password;
+        this.user = user;
+        this.password = password;
     }
 
     /**
      * Returns an auth credential for the Basic scheme.
      */
     String getBasicAuthorization(){
-        return Credentials.basic(mUser, mPassword);
+        return Credentials.basic(user, password);
     }
 
     /**
      * Returns user name
      */
     String getUser() {
-        return mUser;
+        return user;
     }
 
     /**
      * Returns password
      */
     String getPassword() {
-        return mPassword;
+        return password;
     }
 }

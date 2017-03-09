@@ -28,7 +28,7 @@ public class RequestException extends ExecutionException {
     public static final int CODE_ACCEPTED = 202;
 
     /**
-     * The request was invalid. You may be missing a required argument or provided bad data. An error mName will be returned explaining what happened.
+     * The request was invalid. You may be missing a required argument or provided bad data. An error name will be returned explaining what happened.
      */
     public static final int CODE_BAD_REQUEST = 400;
 
@@ -92,39 +92,39 @@ public class RequestException extends ExecutionException {
      */
     public static final int INVALID_ACCESS_TOKEN = -3;
 
-    private final int mResponseCode;
+    private final int responseCode;
 
-    private final String mName;
+    private final String name;
 
-    private final String mMessage;
+    private final String message;
 
-    private final int mErrorCode;
+    private final int errorCode;
 
-    private final Map<String, String[]> mErrorsMap;
+    private final Map<String, String[]> errorsMap;
 
     public RequestException(@NonNull Exception e) {
         super(e);
-        mName = "Internal error";
-        mMessage = e.getMessage();
+        name = "Internal error";
+        message = e.getMessage();
         if (e instanceof InterruptedException) {
-            mResponseCode = RequestException.INTERRUPTED;
+            responseCode = RequestException.INTERRUPTED;
         } else if (e instanceof TimeoutException) {
-            mResponseCode = RequestException.TIMEOUT;
+            responseCode = RequestException.TIMEOUT;
         } else if (e instanceof AccessTokenException) {
-            mResponseCode = RequestException.INVALID_ACCESS_TOKEN;
+            responseCode = RequestException.INVALID_ACCESS_TOKEN;
         } else {
-            mResponseCode = RequestException.UNKNOWN;
+            responseCode = RequestException.UNKNOWN;
         }
-        mErrorCode = UNKNOWN;
-        mErrorsMap = new HashMap<>();
+        errorCode = UNKNOWN;
+        errorsMap = new HashMap<>();
     }
 
     public RequestException(int responseCode, String name, String message, int errorCode, Map<String, String[]> errorsMap) {
-        mResponseCode = responseCode;
-        mName = name;
-        mMessage = message;
-        mErrorCode = errorCode;
-        mErrorsMap = errorsMap;
+        this.responseCode = responseCode;
+        this.name = name;
+        this.message = message;
+        this.errorCode = errorCode;
+        this.errorsMap = errorsMap;
     }
 
     /**
@@ -133,14 +133,14 @@ public class RequestException extends ExecutionException {
      * @see #getErrorCode()
      */
     public int getResponseCode() {
-        return mResponseCode;
+        return responseCode;
     }
 
     /**
      * The name of the error
      */
     public String getName() {
-        return mName;
+        return name;
     }
 
     /**
@@ -148,7 +148,7 @@ public class RequestException extends ExecutionException {
      */
     @Override
     public String getMessage() {
-        return mMessage;
+        return message;
     }
 
     /**
@@ -157,28 +157,28 @@ public class RequestException extends ExecutionException {
      * @see #getResponseCode()
      */
     public int getErrorCode() {
-        return mErrorCode;
+        return errorCode;
     }
 
     /**
      * Map with fields errors
      */
     public Map<String, String[]> getErrorsMap() {
-        return mErrorsMap;
+        return errorsMap;
     }
 
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder(getClass().getName());
-        builder.append(" ").append(mErrorCode).append("[").append(mResponseCode).append("] ");
-        if (!TextUtils.isEmpty(mName)) {
-            builder.append(mName);
+        builder.append(" ").append(errorCode).append("[").append(responseCode).append("] ");
+        if (!TextUtils.isEmpty(name)) {
+            builder.append(name);
         }
-        if (!TextUtils.isEmpty(mMessage)) {
+        if (!TextUtils.isEmpty(message)) {
             builder.append("\n");
-            builder.append(mMessage);
+            builder.append(message);
         }
-        for (Map.Entry<String, String[]> entry : mErrorsMap.entrySet()) {
+        for (Map.Entry<String, String[]> entry : errorsMap.entrySet()) {
             builder.append("\n");
             builder.append(entry.getKey()).append(": ").append(Arrays.toString(entry.getValue()));
         }

@@ -24,7 +24,7 @@ public abstract class PatchRequest<T> extends Request<T> {
 
     @Override
     protected Response request(HttpUrl url) throws IOException {
-        return mHttpClient.newCall(createRequest(url, getRequestBody())).execute();
+        return httpClient.newCall(createRequest(url, getRequestBody())).execute();
     }
     @NonNull
     private okhttp3.Request createRequest(HttpUrl url, RequestBody body) {

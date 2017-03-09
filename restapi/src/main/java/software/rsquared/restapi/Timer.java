@@ -7,14 +7,14 @@ package software.rsquared.restapi;
  */
 class Timer {
 
-    private long mStartTime;
-    private long mEndTime;
+    private long startTime;
+    private long endTime;
 
     /**
      * Save actual time as start time of timer
      */
     void start() {
-        mStartTime = System.nanoTime();
+        startTime = System.nanoTime();
     }
 
 
@@ -22,23 +22,23 @@ class Timer {
      * Save actual time as end time of timer
      */
     void stop() {
-        mEndTime = System.nanoTime();
+        endTime = System.nanoTime();
     }
 
     /**
      * Clear Timer state, can be used before next measurement
      */
     void clear() {
-        mStartTime = 0;
-        mEndTime = 0;
+        startTime = 0;
+        endTime = 0;
     }
 
     /**
      * Sets initial values for the new measurement
      */
     void reset(){
-        mStartTime = System.nanoTime();
-        mEndTime = 0;
+        startTime = System.nanoTime();
+        endTime = 0;
     }
 
     /**
@@ -53,10 +53,10 @@ class Timer {
      */
     long getElapsedTimeNs() {
         long end = System.nanoTime();
-        if (mEndTime > 0) {
-            end = mEndTime;
+        if (endTime > 0) {
+            end = endTime;
         }
-        return end - mStartTime;
+        return end - startTime;
     }
 
     /**
