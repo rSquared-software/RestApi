@@ -1,18 +1,18 @@
 # RestApi
 
-##Gradle Dependency (jCenter)
+## Gradle Dependency (jCenter)
 
 ```Gradle
 dependencies {
-    compile 'software.rsquared:rest-api:1.1.2'
+    compile 'software.rsquared:rest-api:1.1.3'
 }
 ```
 
 [ ![Download](https://api.bintray.com/packages/rsquared/maven/rest-api/images/download.svg) ](https://bintray.com/rsquared/maven/rest-api/_latestVersion)
 
-##Usage
+## Usage
 
-###Configuration
+### Configuration
 
 ```java
 RestApi.setConfiguration(new RestApi.Config()
@@ -45,7 +45,7 @@ RestApi.setConfiguration(new RestApi.Config()
         );
 ```
 
-###Model
+### Model
 If you use default json serializer/deserializer then model should be created with Jackson annotations e.g.:
 ```java
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -60,7 +60,7 @@ public class Version {
 }
 ```
 
-###Requests
+### Requests
 Requests should extends one of the class: _**GetRequest, PostRequest, DeleteRequest, PatchRequest, PutRequest**_ e.g.:
 ```java
 public class SetVersion extends PostRequest<BooleanResponse> implements Authorizable {
@@ -81,7 +81,7 @@ public class SetVersion extends PostRequest<BooleanResponse> implements Authoriz
 }
 ```
 
-###Execution
+### Execution
 ```java
 RestApi.execute(new SetVersion(version), new RequestListener<BooleanResponse>() {
     @Override
@@ -106,7 +106,7 @@ try {
 ```
 
 
-####Pool execution
+#### Pool execution
 ```java
 RestApi.pool(RestApi.SERIAL_EXECUTOR) //or RestApi.THREAD_POOL_EXECUTOR
         .add(new GetVersion(), 1)
@@ -131,11 +131,11 @@ RestApi.pool(RestApi.SERIAL_EXECUTOR) //or RestApi.THREAD_POOL_EXECUTOR
         });
 ```
 
-##Developed By
+## Developed By
 
  * Rafal Zajfert - <rz@rsquared.software>
 
-##License
+## License
 
     Copyright 2017 rSquared s.c. R. Orlik, R. Zajfert
 

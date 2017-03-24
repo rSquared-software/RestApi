@@ -40,7 +40,7 @@ class SerialPoolRequest extends PoolRequest<SerialPoolRequest> {
     private void executeNext() {
         if (executeIterator.hasNext()) {
             Map.Entry<Integer, Request> requestEntry = executeIterator.next();
-            executor.submit(requestEntry.getValue().createRequestTask(), ignoreErrorCallback ? null : RestApi.getConfiguration().getErrorCallback(), new PoolRequestListener(requestEntry.getKey()) {
+            executor.submit(requestEntry.getValue().createRequestTask(), requestEntry.getValue().isErrorCallbackIgnored() ? null : RestApi.getConfiguration().getErrorCallback(), new PoolRequestListener(requestEntry.getKey()) {
                 @Override
                 public void onSuccess(Object result) {
                     int requestCode = getRequestCode();

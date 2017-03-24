@@ -5,18 +5,6 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.text.TextUtils;
 
-import software.rsquared.restapi.exceptions.DefaultErrorResponse;
-import software.rsquared.restapi.exceptions.RequestException;
-import software.rsquared.restapi.listeners.ErrorCallback;
-import software.rsquared.restapi.listeners.RequestListener;
-import software.rsquared.restapi.listeners.RequestPoolListener;
-import software.rsquared.restapi.serialization.Deserializer;
-import software.rsquared.restapi.serialization.ErrorDeserializer;
-import software.rsquared.restapi.serialization.JsonSerializer;
-import software.rsquared.restapi.serialization.JsonDeserializer;
-import software.rsquared.restapi.serialization.JsonErrorDeserializer;
-import software.rsquared.restapi.serialization.Serializer;
-
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.HashMap;
@@ -27,6 +15,17 @@ import software.rsquared.androidlogger.Level;
 import software.rsquared.androidlogger.Logger;
 import software.rsquared.androidlogger.logcat.LogcatLogger;
 import software.rsquared.androidlogger.logcat.LogcatLoggerConfig;
+import software.rsquared.restapi.exceptions.DefaultErrorResponse;
+import software.rsquared.restapi.exceptions.RequestException;
+import software.rsquared.restapi.listeners.ErrorCallback;
+import software.rsquared.restapi.listeners.RequestListener;
+import software.rsquared.restapi.listeners.RequestPoolListener;
+import software.rsquared.restapi.serialization.Deserializer;
+import software.rsquared.restapi.serialization.ErrorDeserializer;
+import software.rsquared.restapi.serialization.JsonDeserializer;
+import software.rsquared.restapi.serialization.JsonErrorDeserializer;
+import software.rsquared.restapi.serialization.JsonSerializer;
+import software.rsquared.restapi.serialization.Serializer;
 
 /**
  * TODO: Documentation

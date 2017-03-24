@@ -61,6 +61,7 @@ public abstract class Request<T> {
     private boolean authorizedRequest;
     private RestAuthorizationService userService;
     private boolean ignoreErrorCallback;
+    private boolean disableLogging;
 
     /**
      * Initial constructor for request. This constructor creates http client and prepare executor
@@ -145,7 +146,9 @@ public abstract class Request<T> {
                     } catch (InterruptedException ignored) {
                     }
                 }
-                RestApi.getLogger().vF("%s execution took: %.3fms", getClassCodeAnchor(), timer.getElapsedTime());
+                if (!disableLogging) {
+                    RestApi.getLogger().vF("%s execution took: %.3fms", getClassCodeAnchor(), timer.getElapsedTime());
+                }
                 return result;
             }
         };
@@ -160,13 +163,17 @@ public abstract class Request<T> {
         checkInitialRequirements(Request.this);
         T mock = mock();
         if (mock != null) {
-            RestApi.getLogger().i("Mock response:", getClassCodeAnchor());
+            if (!disableLogging) {
+                RestApi.getLogger().i("Mock response:", getClassCodeAnchor());
+            }
             return mock;
         }
         checkAccessToken();
         prepareRequest();
         HttpUrl url = getUrl();
-        RestApi.getLogger().v("Start execution:", getClassCodeAnchor(), url);
+            if (!disableLogging) {
+                RestApi.getLogger().v("Start execution:", getClassCodeAnchor(), url);
+            }
         Response response = request(url);
         T result = readResponse(response);
         response.close();
@@ -249,15 +256,28 @@ public abstract class Request<T> {
         }
     }
 
-    public void ignoreErrorCallback() {
+    protected void ignoreErrorCallback() {
         ignoreErrorCallback = true;
+    }
+
+    protected boolean isErrorCallbackIgnored() {
+        return ignoreErrorCallback;
+    }
+
+    protected void disableLogging(){
+        disableLogging = true;
+    }
+
+    protected boolean isLoggingDisabled() {
+        return ignoreErrorCallback;
     }
 
     /**
      * Mark that this request need authorization via {@link #ACCESS_TOKEN}
      */
-    public void setIsAuthorizedRequest() {
+    protected void setIsAuthorizedRequest() {
         setIsAuthorizedRequest(true);
+
     }
 
     /**
@@ -303,7 +323,9 @@ public abstract class Request<T> {
         }
         int status = response.code();
         String content = response.body().string();
-        RestApi.getLogger().v("Response from:", getClassCodeAnchor() + "\n" + content);
+        if (!disableLogging) {
+            RestApi.getLogger().v("Response from:", getClassCodeAnchor() + "\n" + content);
+        }
         if (isSuccess(response)) {
             Class<? extends Request> aClass = getClass();
             //noinspection unchecked
@@ -372,14 +394,14 @@ public abstract class Request<T> {
     /**
      * Set api method url. If url will be sets by this method then all calls {@link #setUrlSegments(String...) setUrlSegments}, {@link #putParameter(String, Object) putParameter} or {@link #putUrlParameter(String, Object) putUrlParameter} will be ignored
      */
-    public void setUrl(String url) {
+    protected void setUrl(String url) {
         this.url = url;
     }
 
     /**
      * Set minimal execution time of this request. Execution of this request will take at least <code>millis</code> milliseconds
      */
-    public void setMinExecutionTime(long millis) {
+    protected void setMinExecutionTime(long millis) {
         this.minExecutionTime = millis;
     }
 
@@ -498,7 +520,9 @@ public abstract class Request<T> {
             if (parameter.isFile()) {
                 String name = parameter.getName();
                 String path = parameter.getFilePath();
-                RestApi.getLogger().d(name + ":", path);
+                if (!disableLogging) {
+                    RestApi.getLogger().d(name + ":", path);
+                }
                 File file = new File(path);
                 if (file.exists()) {
                     bodyBuilder.addFormDataPart(name, file.getName(), RequestBody.create(MediaType.parse("image/" + getFileExtension(file)), file));
@@ -509,7 +533,9 @@ public abstract class Request<T> {
         for (Parameter parameter : bodyParameters) {
             String name = parameter.getName();
             String value = String.valueOf(parameter.getValue());
-            RestApi.getLogger().d(name + ":", value);
+            if (!disableLogging) {
+                RestApi.getLogger().d(name + ":", value);
+            }
             if (!TextUtils.isEmpty(value)) {
                 bodyBuilder.addFormDataPart(name, value);
             }
@@ -532,7 +558,9 @@ public abstract class Request<T> {
         for (Parameter parameter : bodyParameters) {
             String name = parameter.getName();
             String value = String.valueOf(parameter.getValue());
-            RestApi.getLogger().d(name + ":", value);
+            if (!disableLogging) {
+                RestApi.getLogger().d(name + ":", value);
+            }
             if (!TextUtils.isEmpty(value)) {
                 bodyBuilder.add(name, value);
             }

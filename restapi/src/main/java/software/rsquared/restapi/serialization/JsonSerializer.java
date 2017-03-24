@@ -5,7 +5,9 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.text.TextUtils;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -44,6 +46,9 @@ public class JsonSerializer implements Serializer {
         objectMapper.registerModule(module);
         if (!this.config.nullValues) {
             objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+        }
+        if (config.disableAutoDetect) {
+            objectMapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.NONE);
         }
     }
 
@@ -160,6 +165,7 @@ public class JsonSerializer implements Serializer {
         private boolean timeInSeconds;
         private boolean intBoolean;
         private boolean nullValues;
+        private boolean disableAutoDetect;
 
         /**
          * Set true if time should be serialized to unix time seconds
@@ -182,6 +188,14 @@ public class JsonSerializer implements Serializer {
          */
         public Config setSerializeNullValues(boolean nonNullValues) {
             nullValues = nonNullValues;
+            return this;
+        }
+
+        /**
+         * Set true if you want to disable property auto detect (only annotated property will be serialized)
+         */
+        public Config setDisableAutoDetect(boolean disable){
+            disableAutoDetect = disable;
             return this;
         }
     }

@@ -17,8 +17,6 @@ abstract class PoolRequest<P extends PoolRequest> {
 
 	protected Map<Integer, Request> requestPool = new LinkedHashMap<>();
 
-	protected boolean ignoreErrorCallback;
-
 	protected boolean executed;
 
 	protected RequestExecutor executor;
@@ -41,14 +39,12 @@ abstract class PoolRequest<P extends PoolRequest> {
 
 	public abstract void execute(RequestPoolListener listener);
 
-	public void stopExecute() {
-		executor.shutdownNow();
+	public void cancel() {
+		stopExecute();
 	}
 
-	public P ignoreErrorCallback() {
-		ignoreErrorCallback = true;
-		//noinspection unchecked
-		return (P) this;
+	protected void stopExecute() {
+		executor.shutdownNow();
 	}
 
 	abstract class PoolRequestListener extends RequestListener {
