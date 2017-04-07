@@ -1,5 +1,6 @@
 package software.rsquared.restapi.serialization;
 
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
 import software.rsquared.restapi.Parameter;
@@ -13,7 +14,7 @@ import java.util.List;
  */
 public interface Serializer {
 
-    <T> List<Parameter> serialize(T object);
+    <T> List<Parameter> serialize(@Nullable T object);
 
-    <T> List<Parameter> serialize(@Nullable String name, T object);
+    <T> List<Parameter> serialize(@NonNull String name, @Nullable T object);
 }

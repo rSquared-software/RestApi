@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
@@ -111,6 +112,9 @@ public class JsonSerializer implements Serializer {
 
     @Override
     public <T> List<Parameter> serialize(T object) {
+        if (object == null) {
+            return Collections.emptyList();
+        }
         String name = null;
         if (isRestObject(object.getClass())) {
             name = getObjectName(object);
@@ -121,6 +125,9 @@ public class JsonSerializer implements Serializer {
 
     @Override
     public <T> List<Parameter> serialize(@Nullable String name, T object) {
+        if (object == null) {
+            return Collections.emptyList();
+        }
         List<Parameter> parameters = new ArrayList<>();
         JsonNode jsonNode = objectMapper.valueToTree(object);
         addParameter(name, jsonNode, parameters);

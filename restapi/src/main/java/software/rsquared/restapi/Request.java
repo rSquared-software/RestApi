@@ -230,7 +230,9 @@ public abstract class Request<T> {
         }
 
         if (!userService.isLogged()) {
-            throw new AccessTokenException(Request.this.getClass().getSimpleName() + " required user to be logged in.");
+            if (!userService.onNotLogged(this)){
+                return;
+            }
         }
 
         try {
