@@ -21,6 +21,8 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
+import software.rsquared.restapi.exceptions.DeserializationException;
+
 /**
  * Default implementation of response {@link Deserializer deserializer}
  *
@@ -67,10 +69,20 @@ public class JsonDeserializer implements Deserializer {
 
     @Override
     public <T> T read(Class<?> requestClass, String content) throws IOException {
-        return readObject(getParameterClasses((ParameterizedType) requestClass.getGenericSuperclass()), content);
+        Type superclass = requestClass.getGenericSuperclass();
+        while (!(superclass instanceof ParameterizedType) && requestClass.getSuperclass()!=null){
+            requestClass = requestClass.getSuperclass();
+            superclass = requestClass.getGenericSuperclass();
+        }
+        if (superclass!= null && superclass instanceof ParameterizedType){
+            return readObject(getParameterClasses((ParameterizedType) superclass), content);
+        }else{
+            throw new DeserializationException("Unknown parameter response class for " + requestClass.getSimpleName());
+        }
+
     }
 
-    public <T> T readObject(List<Class<?>> classes, String content) throws IOException {
+    private  <T> T readObject(List<Class<?>> classes, String content) throws IOException {
         int classesCount = classes.size();
         if (TextUtils.isEmpty(content)){
             content = getEmptyJson(classes.get(0));
@@ -103,7 +115,7 @@ public class JsonDeserializer implements Deserializer {
         return Collection.class.isAssignableFrom(clazz) || clazz.isArray();
     }
 
-    private List<Class<?>> getParameterClasses(@NonNull ParameterizedType type) {
+    public static List<Class<?>> getParameterClasses(@NonNull ParameterizedType type) {
         List<Class<?>> classes = new ArrayList<>();
         Type subType = type.getActualTypeArguments()[0];
         if (subType instanceof Class) {

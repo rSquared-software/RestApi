@@ -53,12 +53,21 @@ class ThreadPoolRequest extends PoolRequest<ThreadPoolRequest> {
                     checkFinished();
                 }
 
+                @Override
+                public void onCancel() {
+                    cancelled = true;
+                }
+
                 private void checkFinished() {
-                    if (results.size() == requestPool.size()) {
+                    if (results.size() == requestPool.size() || cancelled) {
                         stopExecute();
                         if (ThreadPoolRequest.this.listener != null) {
-                            ThreadPoolRequest.this.listener.onSuccess(results);
-                            ThreadPoolRequest.this.listener.onPreExecute();
+                            if (cancelled){
+                                ThreadPoolRequest.this.listener.onCancel();
+                            }else {
+                                ThreadPoolRequest.this.listener.onSuccess(results);
+                            }
+                            ThreadPoolRequest.this.listener.onPostExecute();
                         }
                     }
                 }

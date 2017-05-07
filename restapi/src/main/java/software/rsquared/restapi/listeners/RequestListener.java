@@ -35,4 +35,7 @@ public abstract class RequestListener<T> {
      */
     public void onPostExecute() {
     }
+
+    public void onCancel(){
+    }
 }

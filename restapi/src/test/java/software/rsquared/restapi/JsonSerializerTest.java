@@ -4,6 +4,8 @@ import android.os.Environment;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import software.rsquared.restapi.serialization.JsonSerializer;
+import software.rsquared.restapi.serialization.ObjectToFormSerializer;
+import software.rsquared.restapi.serialization.ObjectToJsonSerializer;
 
 import org.junit.After;
 import org.junit.Before;
@@ -21,11 +23,11 @@ import static org.junit.Assert.*;
  */
 public class JsonSerializerTest {
 
-    private JsonSerializer mSerializer;
+    private ObjectToFormSerializer mSerializer;
 
     @Before
     public void setUp() throws Exception {
-        mSerializer = new JsonSerializer(new JsonSerializer.Config().setIntBoolean(true).setTimeInSeconds(true));
+        mSerializer = new ObjectToFormSerializer(new ObjectToFormSerializer.Config().setIntBoolean(true).setTimeInSeconds(true));
     }
 
     @After
@@ -35,8 +37,8 @@ public class JsonSerializerTest {
 
     @Test
     public void serializeModel() throws Exception {
-        List<Parameter> parameters = mSerializer.serialize(new RequestNoName());
-        assertNotNull(parameters);
+        List<Parameter> parameters = new ArrayList<>();
+        mSerializer.serialize(parameters, new RequestNoName());
         assertEquals(parameters.size(), 15);
         assertEquals(parameters.get(0).getName(), "param");
         assertEquals(parameters.get(0).getValue(), "test1");
@@ -72,8 +74,8 @@ public class JsonSerializerTest {
 
     @Test
     public void serializeModelWithName() throws Exception {
-        List<Parameter> parameters = mSerializer.serialize(new Request());
-        assertNotNull(parameters);
+        List<Parameter> parameters = new ArrayList<>();
+        mSerializer.serialize(parameters, new Request());
         assertEquals(parameters.size(), 15);
         assertEquals(parameters.get(0).getName(), "request_name[param]");
         assertEquals(parameters.get(0).getValue(), "test1");
@@ -113,8 +115,8 @@ public class JsonSerializerTest {
         objects.add("a");
         objects.add("b");
         objects.add("c");
-        List<Parameter> parameters = mSerializer.serialize(objects);
-        assertNotNull(parameters);
+        List<Parameter> parameters = new ArrayList<>();
+        mSerializer.serialize(parameters, objects);
         assertEquals(parameters.size(), 3);
         assertEquals(parameters.get(0).getName(), "[0]");
         assertEquals(parameters.get(0).getValue(), "a");
@@ -132,8 +134,8 @@ public class JsonSerializerTest {
         array[0][1] = "b";
         array[2] = new String[2];
         array[2][1] = "c";
-        List<Parameter> parameters = mSerializer.serialize("strings", array);
-        assertNotNull(parameters);
+        List<Parameter> parameters = new ArrayList<>();
+        mSerializer.serialize(parameters, "strings", array);
         assertEquals(parameters.size(), 3);
         assertEquals(parameters.get(0).getName(), "strings[0][0]");
         assertEquals(parameters.get(0).getValue(), "a");
@@ -146,8 +148,8 @@ public class JsonSerializerTest {
     @Test
     public void serializeCalendar() throws Exception {
         Calendar calendar = Calendar.getInstance();
-        List<Parameter> parameters = mSerializer.serialize("date", calendar);
-        assertNotNull(parameters);
+        List<Parameter> parameters = new ArrayList<>();
+        mSerializer.serialize(parameters, "date", calendar);
         assertEquals(parameters.size(), 1);
         assertEquals(parameters.get(0).getName(), "date");
         assertEquals(parameters.get(0).getValue(), String.valueOf(calendar.getTimeInMillis()/1000));
@@ -158,8 +160,8 @@ public class JsonSerializerTest {
         boolean[] array = new boolean[2];
         array[0] = true;
         array[1] = false;
-        List<Parameter> parameters = mSerializer.serialize("bool", array);
-        assertNotNull(parameters);
+        List<Parameter> parameters = new ArrayList<>();
+        mSerializer.serialize(parameters, "bool", array);
         assertEquals(parameters.size(), 2);
         assertEquals(parameters.get(0).getName(), "bool[0]");
         assertEquals(parameters.get(0).getValue(), "1");

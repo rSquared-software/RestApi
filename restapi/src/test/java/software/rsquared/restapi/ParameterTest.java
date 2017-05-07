@@ -1,8 +1,23 @@
 package software.rsquared.restapi;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+
+import org.json.JSONObject;
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author Rafal Zajfert
@@ -24,4 +39,11 @@ public class ParameterTest {
 
     }
 
+    private class Report {
+        @JsonProperty("param")
+        String param = "test3";
+
+        @JsonProperty("param2")
+        long param2 = 3;
+    }
 }

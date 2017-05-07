@@ -21,6 +21,8 @@ abstract class PoolRequest<P extends PoolRequest> {
 
 	protected RequestExecutor executor;
 
+	protected boolean cancelled;
+
 	protected PoolRequest(int poolSize){
 		executor = new RequestExecutor(poolSize, 0L);
 	}

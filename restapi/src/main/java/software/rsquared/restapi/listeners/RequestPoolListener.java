@@ -2,10 +2,10 @@ package software.rsquared.restapi.listeners;
 
 import android.support.annotation.NonNull;
 
+import java.util.Map;
+
 import software.rsquared.restapi.Request;
 import software.rsquared.restapi.exceptions.RequestException;
-
-import java.util.Map;
 
 /**
  * Listener for the pool of the {@link Request} that allows to receive signal when request execution finished
@@ -42,5 +42,8 @@ public abstract class RequestPoolListener {
      * this method will be invoked after all request executions (regardless of the response result).
      */
     public void onPostExecute() {
+    }
+
+    public void onCancel() {
     }
 }

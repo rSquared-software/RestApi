@@ -14,7 +14,7 @@ import java.util.List;
  */
 public interface Serializer {
 
-    <T> List<Parameter> serialize(@Nullable T object);
+    <T> void serialize(@NonNull List<Parameter> parameters, @Nullable T object);
 
-    <T> List<Parameter> serialize(@NonNull String name, @Nullable T object);
+    <T> void serialize(@NonNull List<Parameter> parameters, @NonNull String name, @Nullable T object);
 }

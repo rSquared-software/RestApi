@@ -25,12 +25,14 @@ import okhttp3.OkHttpClient;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.Route;
-import software.rsquared.restapi.exceptions.AccessTokenException;
 import software.rsquared.restapi.exceptions.InitialRequirementsException;
+import software.rsquared.restapi.exceptions.RefreshTokenException;
 import software.rsquared.restapi.exceptions.RequestException;
+import software.rsquared.restapi.exceptions.UserServiceNotInitialized;
 import software.rsquared.restapi.listeners.RequestListener;
 import software.rsquared.restapi.serialization.Deserializer;
 import software.rsquared.restapi.serialization.ErrorDeserializer;
+import software.rsquared.restapi.serialization.JsonSerializer;
 import software.rsquared.restapi.serialization.Serializer;
 
 /**
@@ -43,9 +45,12 @@ public abstract class Request<T> {
 
     public static final MediaType MULTIPART_FORM_DATA = MediaType.parse("multipart/form-data");
     public static final MediaType APPLICATION_URLENCODED = MediaType.parse("application/x-www-form-urlencoded");
+    public static final MediaType APPLICATION_JSON = MediaType.parse("application/json");
+
     protected static final String ACCESS_TOKEN = "access_token";
     protected static final String AUTHORIZATION = "BasicAuthorization";
     protected static final String CONTENT_TYPE = "Content-Type";
+
     private static final ThreadLock LOCK = new ThreadLock();
 
     protected final OkHttpClient httpClient;
@@ -171,9 +176,9 @@ public abstract class Request<T> {
         checkAccessToken();
         prepareRequest();
         HttpUrl url = getUrl();
-            if (!disableLogging) {
-                RestApi.getLogger().v("Start execution:", getClassCodeAnchor(), url);
-            }
+        if (!disableLogging) {
+            RestApi.getLogger().v("Start execution:", getClassCodeAnchor(), url);
+        }
         Response response = request(url);
         T result = readResponse(response);
         response.close();
@@ -226,33 +231,25 @@ public abstract class Request<T> {
             return;
         }
         if (userService == null) {
-            throw new IllegalArgumentException("Request is not properly configured to use UserService. Use method RestApi.Config.setRestAuthorizationService(RestAuthorizationService) to provide user service implementation");
+            throw new UserServiceNotInitialized("Request is not properly configured to use UserService. Use method RestApi.Config.setRestAuthorizationService(RestAuthorizationService) to provide user service implementation");
         }
 
         if (!userService.isLogged()) {
-            if (!userService.onNotLogged(this)){
+            if (!userService.onNotLogged(this)) {
                 return;
             }
         }
 
-        try {
-            LOCK.waitIfLocked();
-        } catch (InterruptedException e) {
-            throw new RuntimeException("Locked thread interrupted!", e);
-        }
+        LOCK.waitIfLocked();
         if (userService.isTokenValid()) {
             return;
         }
-        try {
-            LOCK.lock();
-        } catch (InterruptedException e) {
-            throw new RuntimeException("Locked thread interrupted!", e);
-        }
+        LOCK.lock();
         try {
             userService.refreshToken();
         } catch (Exception e) {
             userService.logout();
-            throw new AccessTokenException("Problem during obtaining refresh token", e);
+            throw new RefreshTokenException("Problem during obtaining refresh token", e);
         } finally {
             LOCK.unlock();
         }
@@ -266,7 +263,7 @@ public abstract class Request<T> {
         return ignoreErrorCallback;
     }
 
-    protected void disableLogging(){
+    protected void disableLogging() {
         disableLogging = true;
     }
 
@@ -341,7 +338,7 @@ public abstract class Request<T> {
      * Checks if response is success. By default checks if response code is 200
      */
     protected boolean isSuccess(Response response) {
-        return response.code() == 200;
+        return RestApi.getConfiguration().getSuccessStatusCodes().contains(response.code());
     }
 
     /**
@@ -421,28 +418,28 @@ public abstract class Request<T> {
      * Adds parameter to URL's query string.
      */
     protected void putUrlParameter(@NonNull String name, @Nullable Object value) {
-        urlParameters.addAll(getSerializer().serialize(name, value));
+        getSerializer().serialize(urlParameters, name, value);
     }
 
     /**
      * Adds parameter to URL's query string.
      */
     protected void putUrlParameter(@Nullable Object value) {
-        urlParameters.addAll(getSerializer().serialize(value));
+        getSerializer().serialize(urlParameters, value);
     }
 
     /**
      * Adds parameter to request body
      */
     protected void putParameter(@NonNull String name, @Nullable Object value) {
-        bodyParameters.addAll(getSerializer().serialize(name, value));
+        getSerializer().serialize(bodyParameters, name, value);
     }
 
     /**
      * Adds parameter to request body
      */
     protected void putParameter(@Nullable Object value) {
-        bodyParameters.addAll(getSerializer().serialize(value));
+        getSerializer().serialize(bodyParameters, value);
     }
 
     protected void addHeader(@NonNull String name, @NonNull String value) {
@@ -490,13 +487,16 @@ public abstract class Request<T> {
      */
     @Nullable
     protected RequestBody getRequestBody() {
-        RequestBody body;
-        if (isMultipartRequest()) {
-            body = getMultipartBody();
+        MediaType mediaType = getMediaType();
+        if (MULTIPART_FORM_DATA.equals(mediaType)) {
+            return getMultipartBody();
+        } else if (APPLICATION_URLENCODED.equals(mediaType)) {
+            return getFormBody();
+        } else if (APPLICATION_JSON.equals(mediaType)) {
+            return getJsonBody();
         } else {
-            body = getFormBody();
+            throw new IllegalStateException("Unsupported media type: " + mediaType.toString());
         }
-        return body;
     }
 
     /**
@@ -568,6 +568,14 @@ public abstract class Request<T> {
             }
         }
         return bodyBuilder.build();
+    }
+
+    private RequestBody getJsonBody() {
+        if (getSerializer() instanceof JsonSerializer) {
+            return RequestBody.create(APPLICATION_JSON, ((JsonSerializer) getSerializer()).toJsonString(bodyParameters));
+        } else {
+            throw new IllegalStateException("Json media type requires JsonSerializer. Set JsonSerializer via RestApi.Config().setSerializer()");
+        }
     }
 
     protected MediaType getMediaType() {

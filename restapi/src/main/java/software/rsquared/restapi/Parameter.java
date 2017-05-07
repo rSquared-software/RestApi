@@ -1,5 +1,15 @@
 package software.rsquared.restapi;
 
+import android.text.TextUtils;
+
+import com.fasterxml.jackson.annotation.JsonValue;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.SerializerProvider;
+
+import java.io.IOException;
+
 /**
  * Object contains pair, name and value of the request parameter
  *
@@ -10,6 +20,7 @@ public class Parameter {
 
     @SuppressWarnings("WeakerAccess")
     public static final String FILE_REGEX = "^_file\\{(.+)\\}$";
+
     private String name;
 
     private Object value;
@@ -23,19 +34,19 @@ public class Parameter {
     }
 
     //region Getters and Setters
-    String getName() {
+    public String getName() {
         return name;
     }
 
-    void setName(String name) {
+    public void setName(String name) {
         this.name = name;
     }
 
-    Object getValue() {
+    public Object getValue() {
         return value;
     }
 
-    void setValue(Object value) {
+    public void setValue(Object value) {
         this.value = value;
     }
     //endregion
@@ -43,11 +54,12 @@ public class Parameter {
     /**
      * Checks if value is path to file (string matches "_file{...}")
      */
-    boolean isFile() {
+    public boolean isFile() {
         return value instanceof String && ((String) value).matches(FILE_REGEX);
     }
 
-    String getFilePath() {
+    public String getFilePath() {
         return ((String) value).replaceAll(FILE_REGEX, "$1");
     }
+
 }

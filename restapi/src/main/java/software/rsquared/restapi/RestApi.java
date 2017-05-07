@@ -4,12 +4,16 @@ import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.text.TextUtils;
+import android.util.SparseArray;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 import software.rsquared.androidlogger.Level;
 import software.rsquared.androidlogger.Logger;
@@ -25,6 +29,7 @@ import software.rsquared.restapi.serialization.ErrorDeserializer;
 import software.rsquared.restapi.serialization.JsonDeserializer;
 import software.rsquared.restapi.serialization.JsonErrorDeserializer;
 import software.rsquared.restapi.serialization.JsonSerializer;
+import software.rsquared.restapi.serialization.ObjectToFormSerializer;
 import software.rsquared.restapi.serialization.Serializer;
 
 /**
@@ -37,10 +42,12 @@ public class RestApi {
 
     public static final int THREAD_POOL_EXECUTOR = 1;
     public static final int SERIAL_EXECUTOR = 2;
-    private static Config sConfiguration;
+    private static Config configuration;
+    private static SparseArray<RequestFuture> requests = new SparseArray<>();
+    private static SparseArray<PoolRequest> poolRequests = new SparseArray<>();
 
     static Config getConfiguration() {
-        return sConfiguration;
+        return configuration;
     }
 
     /**
@@ -49,15 +56,15 @@ public class RestApi {
      * @param configuration object with rest configuration
      */
     public static void setConfiguration(Config configuration) {
-        sConfiguration = configuration;
+        RestApi.configuration = configuration;
     }
 
     static Logger getLogger() {
-        return sConfiguration.logger;
+        return configuration.logger;
     }
 
     static boolean isConfigured() {
-        return sConfiguration != null;
+        return configuration != null;
     }
 
     public static <E> void execute(Request<E> request, RequestListener<E> listener) {
@@ -68,8 +75,53 @@ public class RestApi {
         return request.execute().get();
     }
 
+    public static <E> void execute(final Request<E> request, final int requestCode, final RequestListener<E> listener) {
+        RequestFuture<E> future = request.execute(new RequestListener<E>() {
+            @Override
+            public void onSuccess(E result) {
+                listener.onSuccess(result);
+            }
+
+            @Override
+            public void onFailed(RequestException e) {
+                listener.onFailed(e);
+            }
+
+            @Override
+            public void onPreExecute() {
+                listener.onPreExecute();
+            }
+
+            @Override
+            public void onPostExecute() {
+                requests.delete(requestCode);
+                listener.onPostExecute();
+            }
+
+            @Override
+            public void onCancel() {
+                listener.onCancel();
+            }
+        });
+        requests.put(requestCode, future);
+    }
+
     public static PoolBuilder pool(@Executor int executor) {
         return new PoolBuilder(executor);
+    }
+
+    public static void cancel(int requestCode){
+        RequestFuture future = requests.get(requestCode);
+        if (future != null){
+            future.cancel(true);
+        }
+    }
+
+    public static void cancelPool(int requestCode){
+        PoolRequest pool = poolRequests.get(requestCode);
+        if (pool != null){
+            pool.cancel();
+        }
     }
 
     @IntDef({THREAD_POOL_EXECUTOR, SERIAL_EXECUTOR})
@@ -78,27 +130,26 @@ public class RestApi {
     }
 
     public static class PoolBuilder {
-        protected Map<Integer, Request> mRequestPool = new LinkedHashMap<>();
+        protected Map<Integer, Request> requestPool = new LinkedHashMap<>();
         @Executor
-        private int mExecutor;
+        private int executor;
 
         public PoolBuilder(@Executor int executor) {
-            mExecutor = executor;
+            this.executor = executor;
         }
 
         public PoolRequest build() {
             PoolRequest poolRequest;
-            switch (mExecutor) {
+            switch (executor) {
                 case THREAD_POOL_EXECUTOR:
-                    poolRequest = new ThreadPoolRequest(mRequestPool.size());
+                    poolRequest = new ThreadPoolRequest(requestPool.size());
                     break;
                 case SERIAL_EXECUTOR:
                 default:
                     poolRequest = new SerialPoolRequest();
                     break;
-
             }
-            for (Map.Entry<Integer, Request> entry : mRequestPool.entrySet()) {
+            for (Map.Entry<Integer, Request> entry : requestPool.entrySet()) {
                 poolRequest.addTask(entry.getValue(), entry.getKey());
             }
             return poolRequest;
@@ -109,9 +160,46 @@ public class RestApi {
             poolRequest.execute(listener);
         }
 
+        public void execute(final RequestPoolListener listener, final int requestCode) {
+            final PoolRequest poolRequest = build();
+            poolRequest.execute(new RequestPoolListener() {
+                @Override
+                public void onSuccess(@NonNull Map<Integer, Object> result) {
+                    listener.onSuccess(result);
+                }
+
+                @Override
+                public boolean onFailed(RequestException e, int requestCode) {
+                    return listener.onFailed(e, requestCode);
+                }
+
+                @Override
+                public void onPreExecute() {
+                    listener.onPreExecute();
+                }
+
+                @Override
+                public void onTaskSuccess(Object result, int requestCode) {
+                    listener.onTaskSuccess(result, requestCode);
+                }
+
+                @Override
+                public void onPostExecute() {
+                    listener.onPostExecute();
+                    poolRequests.delete(requestCode);
+                }
+
+                @Override
+                public void onCancel() {
+                    listener.onCancel();
+                }
+            });
+            poolRequests.put(requestCode, poolRequest);
+        }
+
 
         public PoolBuilder add(@NonNull Request request, int requestCode) {
-            mRequestPool.put(requestCode, request);
+            requestPool.put(requestCode, request);
             return this;
         }
     }
@@ -121,6 +209,7 @@ public class RestApi {
         public static final String HTTP = "http";
         public static final String HTTPS = "https";
 
+        private Set<Integer> successStatusCodes = new HashSet<>(Collections.singletonList(200));
         private int timeout = 60 * 1000;
         private String scheme = HTTP;
         private String host;
@@ -139,7 +228,7 @@ public class RestApi {
         private Deserializer deserializer = new JsonDeserializer();
 
         @NonNull
-        private Serializer serializer = new JsonSerializer();
+        private Serializer serializer = new ObjectToFormSerializer();
 
         private RestAuthorizationService userService;
 
@@ -351,32 +440,55 @@ public class RestApi {
          * <p>
          * default: {@link Level#VERBOSE}
          */
-        public Config setLogLevel(Level level) {
+        public Config setLogLevel(@NonNull Level level) {
             ((LogcatLogger) logger).setConfig(new LogcatLoggerConfig().setLevel(level));
             return this;
         }
 
+        /**
+         * Add header to all requests
+         */
         public Config addHeader(String name, String value) {
             headers.put(name, value);
             return this;
         }
 
+        /**
+         * remove header added by {@link #addHeader(String, String)}
+         */
         public Config removeHeader(String name) {
             headers.remove(name);
             return this;
         }
 
+        /**
+         * Get headers map
+         */
+        @NonNull
         public Map<String, String> getHeaders() {
             return headers;
         }
 
+        /**
+         * Get callback that will be invoked if request failed
+         */
+        @Nullable
         public ErrorCallback getErrorCallback() {
             return errorCallback;
         }
 
-        public Config setErrorCallback(ErrorCallback errorCallback) {
+
+        public Config setErrorCallback(@Nullable ErrorCallback errorCallback) {
             this.errorCallback = errorCallback;
             return this;
+        }
+
+        public Set<Integer> getSuccessStatusCodes() {
+            return successStatusCodes;
+        }
+
+        public void setSuccessStatusCodes(Set<Integer> successStatusCodes) {
+            this.successStatusCodes = successStatusCodes;
         }
     }
 }

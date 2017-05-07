@@ -5,16 +5,16 @@ import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
-import software.rsquared.restapi.exceptions.AccessTokenException;
-import software.rsquared.restapi.exceptions.RequestException;
-import software.rsquared.restapi.listeners.ErrorCallback;
-import software.rsquared.restapi.listeners.RequestListener;
-
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
+import software.rsquared.restapi.exceptions.AccessTokenException;
+import software.rsquared.restapi.exceptions.RequestException;
+import software.rsquared.restapi.listeners.ErrorCallback;
+import software.rsquared.restapi.listeners.RequestListener;
 
 /**
  * A cancellable asynchronous computation. This implementation converts all Exception to the {@link RequestException} and allows listen to the end of execution
@@ -25,13 +25,11 @@ import java.util.concurrent.TimeoutException;
  */
 class RequestFutureTask<T> extends FutureTask<T> implements RequestFuture<T> {
 
-    private final ErrorCallback errorCallback;
-
-    @Nullable
-    private RequestListener<T> listener;
-
     @Nullable
     private static Handler handler;
+    private final ErrorCallback errorCallback;
+    @Nullable
+    private RequestListener<T> listener;
 
     /**
      * Creates a FutureTask that will, upon running, execute the given Callable.
@@ -109,10 +107,14 @@ class RequestFutureTask<T> extends FutureTask<T> implements RequestFuture<T> {
             getHandler().post(new Runnable() {
                 @Override
                 public void run() {
-                    try {
-                        listener.onSuccess(get());
-                    } catch (RequestException e) {
-                        listener.onFailed(e);
+                    if (RequestFutureTask.this.isCancelled()) {
+                        listener.onCancel();
+                    } else {
+                        try {
+                            listener.onSuccess(get());
+                        } catch (RequestException e) {
+                            listener.onFailed(e);
+                        }
                     }
                     listener.onPostExecute();
                 }

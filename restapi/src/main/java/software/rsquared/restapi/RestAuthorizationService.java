@@ -19,7 +19,7 @@ public interface RestAuthorizationService {
 
     /**
      * Method called when method {@link #isLogged()} returns false (before request execution).
-     * This method is called from background thread so you can try to log in (synchronously) and return true if success
+     * This method is called from background thread so you can try to log in (this method is called in background task) and return true if success
      * @param request executed request
      * @return false if request should stop working, true otherwise
      */
