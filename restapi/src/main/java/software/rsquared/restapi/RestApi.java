@@ -8,6 +8,7 @@ import android.util.SparseArray;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -487,8 +488,17 @@ public class RestApi {
             return successStatusCodes;
         }
 
-        public void setSuccessStatusCodes(Set<Integer> successStatusCodes) {
+        public Config setSuccessStatusCodes(Set<Integer> successStatusCodes) {
             this.successStatusCodes = successStatusCodes;
+            return this;
+        }
+
+        public Config setSuccessStatusCodes(int... successStatusCodes) {
+            this.successStatusCodes = new HashSet<>();
+            for (int code : successStatusCodes) {
+                this.successStatusCodes.add(code);
+            }
+            return this;
         }
     }
 }

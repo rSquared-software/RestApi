@@ -42,7 +42,7 @@ publish {
     userOrg = 'rsquared'
     groupId = 'software.rsquared'
     artifactId = 'rest-api'
-    publishVersion = '1.1.5'
+    publishVersion = '1.1.6'
     desc = 'Library for simplify android rest api connecton'
     website = 'https://github.com/rSquared-software/RestApi'
     bintrayUser = properties.getProperty("bintray.oss.user")
