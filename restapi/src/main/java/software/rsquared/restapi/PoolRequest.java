@@ -1,6 +1,7 @@
 package software.rsquared.restapi;
 
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 
 import software.rsquared.restapi.listeners.RequestListener;
 import software.rsquared.restapi.listeners.RequestPoolListener;
@@ -39,7 +40,7 @@ abstract class PoolRequest<P extends PoolRequest> {
 		return (P) this;
 	}
 
-	public abstract void execute(RequestPoolListener listener);
+	public abstract void execute(@Nullable RequestPoolListener listener);
 
 	public void cancel() {
 		stopExecute();

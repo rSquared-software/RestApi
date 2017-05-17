@@ -8,9 +8,9 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import software.rsquared.androidlogger.Logger;
-import software.rsquared.restapi.Authorizable;
 import software.rsquared.restapi.GetRequest;
 import software.rsquared.restapi.RestApi;
+import software.rsquared.restapi.RestApiConfiguration;
 import software.rsquared.restapi.exceptions.RequestException;
 import software.rsquared.restapi.listeners.RequestListener;
 import software.rsquared.restapi.listeners.RequestPoolListener;
@@ -25,9 +25,9 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        RestApi.setConfiguration(new RestApi.Config()
-                .setScheme(RestApi.Config.HTTP)
-                .setHost("api.host.com")
+        RestApi.setConfiguration(new RestApiConfiguration()
+                        .setScheme(RestApiConfiguration.HTTP)
+                        .setHost("api.host.com")
 //                .setPort(80)
 //                .setInitialRequirements(new InitialRequirements() {
 //                    @Override

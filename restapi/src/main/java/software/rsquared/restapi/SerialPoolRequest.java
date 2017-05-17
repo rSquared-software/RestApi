@@ -1,5 +1,7 @@
 package software.rsquared.restapi;
 
+import android.support.annotation.Nullable;
+
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -13,7 +15,7 @@ import software.rsquared.restapi.listeners.RequestPoolListener;
  * @author Rafal Zajfert
  */
 class SerialPoolRequest extends PoolRequest<SerialPoolRequest> {
-
+    @Nullable
     private RequestPoolListener listener;
     private Map<Integer, Object> results = new LinkedHashMap<>();
     private Iterator<Map.Entry<Integer, Request>> executeIterator;
@@ -23,7 +25,7 @@ class SerialPoolRequest extends PoolRequest<SerialPoolRequest> {
     }
 
 
-    public void execute(RequestPoolListener listener) {
+    public void execute(@Nullable RequestPoolListener listener) {
         if (executed) {
             throw new IllegalStateException("Already executed.");
         }

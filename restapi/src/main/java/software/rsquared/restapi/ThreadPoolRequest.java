@@ -1,5 +1,7 @@
 package software.rsquared.restapi;
 
+import android.support.annotation.Nullable;
+
 import software.rsquared.restapi.exceptions.RequestException;
 import software.rsquared.restapi.listeners.RequestPoolListener;
 
@@ -14,6 +16,7 @@ import java.util.Map;
 class ThreadPoolRequest extends PoolRequest<ThreadPoolRequest> {
 
     private Map<Integer, Object> results = new LinkedHashMap<>();
+    @Nullable
     private RequestPoolListener listener;
 
     public ThreadPoolRequest(int poolSize) {

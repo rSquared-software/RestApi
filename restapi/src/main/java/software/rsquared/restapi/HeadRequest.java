@@ -10,14 +10,14 @@ import okhttp3.HttpUrl;
 import okhttp3.Response;
 
 /**
- * Get request
+ * Head request
  *
  * @author Rafal Zajfert
  * @see Request
  */
-public abstract class GetRequest<E> extends Request<E> {
+public abstract class HeadRequest<E> extends Request<E> {
 
-    protected GetRequest() {
+    protected HeadRequest() {
     }
 
     @Override
@@ -26,7 +26,7 @@ public abstract class GetRequest<E> extends Request<E> {
     }
 
     /**
-     * @deprecated Get request doesn't have body, use {@link #putUrlParameter(String, Object)} instead
+     * @deprecated Head request doesn't have body, use {@link #putUrlParameter(String, Object)} instead
      */
     @Override
     @Deprecated
@@ -46,7 +46,7 @@ public abstract class GetRequest<E> extends Request<E> {
     private okhttp3.Request createRequest(HttpUrl url) {
         okhttp3.Request.Builder builder = new okhttp3.Request.Builder()
                 .url(url)
-                .get();
+                .head();
         for (Map.Entry<String, String> entry : getHeaders().entrySet()) {
             builder.addHeader(entry.getKey(), entry.getValue());
         }

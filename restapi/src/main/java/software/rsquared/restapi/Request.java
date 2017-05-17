@@ -25,6 +25,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.Route;
+import software.rsquared.androidlogger.Logger;
 import software.rsquared.restapi.exceptions.InitialRequirementsException;
 import software.rsquared.restapi.exceptions.RefreshTokenException;
 import software.rsquared.restapi.exceptions.RequestException;
@@ -72,24 +73,24 @@ public abstract class Request<T> {
      * Initial constructor for request. This constructor creates http client and prepare executor
      */
     protected Request() {
-        if (!RestApi.isConfigured()) {
+        if (!isConfigured()) {
             throw new IllegalStateException("RestApi must be configured before using requests");
         }
-
-        httpClient = createHttpClient();
-        executor = new RequestExecutor(1, RestApi.getConfiguration().getTimeout());
-        userService = RestApi.getConfiguration().getRestAuthorizationService();
+        RestApiConfiguration configuration = getConfiguration();
+        httpClient = createHttpClient(configuration);
+        executor = new RequestExecutor(1, configuration.getTimeout());
+        userService = configuration.getRestAuthorizationService();
     }
 
     @NonNull
-    private OkHttpClient createHttpClient() {
-        int timeout = RestApi.getConfiguration().getTimeout();
+    private OkHttpClient createHttpClient(RestApiConfiguration configuration) {
+        int timeout = configuration.getTimeout();
         OkHttpClient.Builder clientBuilder = new OkHttpClient.Builder()
                 .connectionPool(new ConnectionPool(1, timeout, TimeUnit.MILLISECONDS))
                 .connectTimeout(timeout, TimeUnit.MILLISECONDS)
                 .readTimeout(timeout, TimeUnit.MILLISECONDS);
 
-        final BasicAuthorization basicAuthorization = RestApi.getConfiguration().getBasicAuthorization();
+        final BasicAuthorization basicAuthorization = configuration.getBasicAuthorization();
         if (basicAuthorization != null) {
             clientBuilder.authenticator(new Authenticator() {
                 @Override
@@ -114,13 +115,13 @@ public abstract class Request<T> {
     /**
      * {@inheritDoc}
      */
-    RequestFuture<T> execute(RequestListener<T> listener) {
+    RequestFuture<T> execute(@Nullable RequestListener<T> listener) {
         return execute(createRequestTask(), listener);
     }
 
     @NonNull
-    private RequestFuture<T> execute(Callable<T> task, RequestListener<T> listener) {
-        RequestFuture<T> future = executor.submit(task, ignoreErrorCallback ? null : RestApi.getConfiguration().getErrorCallback(), listener);
+    private RequestFuture<T> execute(Callable<T> task, @Nullable RequestListener<T> listener) {
+        RequestFuture<T> future = executor.submit(task, ignoreErrorCallback ? null : getConfiguration().getErrorCallback(), listener);
         executor.shutdown();
         return future;
     }
@@ -152,7 +153,7 @@ public abstract class Request<T> {
                     }
                 }
                 if (!disableLogging) {
-                    RestApi.getLogger().vF("%s execution took: %.3fms", getClassCodeAnchor(), timer.getElapsedTime());
+                    getLogger().vF("%s execution took: %.3fms", getClassCodeAnchor(), timer.getElapsedTime());
                 }
                 return result;
             }
@@ -169,7 +170,7 @@ public abstract class Request<T> {
         T mock = mock();
         if (mock != null) {
             if (!disableLogging) {
-                RestApi.getLogger().i("Mock response:", getClassCodeAnchor());
+                getLogger().i("Mock response:", getClassCodeAnchor());
             }
             return mock;
         }
@@ -177,7 +178,7 @@ public abstract class Request<T> {
         prepareRequest();
         HttpUrl url = getUrl();
         if (!disableLogging) {
-            RestApi.getLogger().v("Start execution:", getClassCodeAnchor(), url);
+            getLogger().v("Start execution:", getClassCodeAnchor(), url);
         }
         Response response = request(url);
         T result = readResponse(response);
@@ -211,7 +212,7 @@ public abstract class Request<T> {
      */
     protected void checkInitialRequirements(Request<T> request) throws RequestException {
         try {
-            InitialRequirements initialRequirements = RestApi.getConfiguration().getInitialRequirements();
+            InitialRequirements initialRequirements = getConfiguration().getInitialRequirements();
             if (initialRequirements != null) {
                 initialRequirements.onCheckRequirements(request);
             }
@@ -323,7 +324,7 @@ public abstract class Request<T> {
         int status = response.code();
         String content = response.body().string();
         if (!disableLogging) {
-            RestApi.getLogger().v("Response from:", getClassCodeAnchor() + "\n" + content);
+            getLogger().v("Response from:", getClassCodeAnchor() + "\n" + content);
         }
         if (isSuccess(response)) {
             Class<? extends Request> aClass = getClass();
@@ -338,7 +339,7 @@ public abstract class Request<T> {
      * Checks if response is success. By default checks if response code is 200
      */
     protected boolean isSuccess(Response response) {
-        return RestApi.getConfiguration().getSuccessStatusCodes().contains(response.code());
+        return getConfiguration().getSuccessStatusCodes().contains(response.code());
     }
 
     /**
@@ -363,14 +364,15 @@ public abstract class Request<T> {
             url = HttpUrl.parse(this.url);
 
         } else {
+            RestApiConfiguration configuration = getConfiguration();
             HttpUrl.Builder builder = new HttpUrl.Builder();
-            builder.scheme(RestApi.getConfiguration().getScheme());
-            if (RestApi.getConfiguration().getPort() >= 0) {
-                builder.port(RestApi.getConfiguration().getPort());
+            builder.scheme(configuration.getScheme());
+            if (configuration.getPort() >= 0) {
+                builder.port(configuration.getPort());
             }
-            builder.host(RestApi.getConfiguration().getHost());
+            builder.host(configuration.getHost());
 
-            BasicAuthorization basicAuthorization = RestApi.getConfiguration().getBasicAuthorization();
+            BasicAuthorization basicAuthorization = configuration.getBasicAuthorization();
             if (basicAuthorization != null) {
                 builder.username(basicAuthorization.getUser())
                         .password(basicAuthorization.getPassword());
@@ -405,7 +407,7 @@ public abstract class Request<T> {
     }
 
     /**
-     * Set api method url based on {@link RestApi.Config}
+     * Set api method url based on {@link RestApiConfiguration}
      *
      * @param urlSegments path segments e.g: <p>
      *                    for address http://example.com/get/user  this method should be invoked: {@code setUrlSegments("get", "user");}
@@ -448,7 +450,7 @@ public abstract class Request<T> {
 
     protected Map<String, String> getHeaders() {
         Map<String, String> headers = new HashMap<>(headerMap);
-        headers.putAll(RestApi.getConfiguration().getHeaders());
+        headers.putAll(getConfiguration().getHeaders());
         return headers;
     }
 
@@ -523,7 +525,7 @@ public abstract class Request<T> {
                 String name = parameter.getName();
                 String path = parameter.getFilePath();
                 if (!disableLogging) {
-                    RestApi.getLogger().d(name + ":", path);
+                    getLogger().d(name + ":", path);
                 }
                 File file = new File(path);
                 if (file.exists()) {
@@ -536,7 +538,7 @@ public abstract class Request<T> {
             String name = parameter.getName();
             String value = String.valueOf(parameter.getValue());
             if (!disableLogging) {
-                RestApi.getLogger().d(name + ":", value);
+                getLogger().d(name + ":", value);
             }
             if (!TextUtils.isEmpty(value)) {
                 bodyBuilder.addFormDataPart(name, value);
@@ -561,7 +563,7 @@ public abstract class Request<T> {
             String name = parameter.getName();
             String value = String.valueOf(parameter.getValue());
             if (!disableLogging) {
-                RestApi.getLogger().d(name + ":", value);
+                getLogger().d(name + ":", value);
             }
             if (!TextUtils.isEmpty(value)) {
                 bodyBuilder.add(name, value);
@@ -583,16 +585,27 @@ public abstract class Request<T> {
     }
 
     protected Serializer getSerializer() {
-        return RestApi.getConfiguration().getSerializer();
+        return getConfiguration().getSerializer();
     }
 
     protected Deserializer getDeserializer() {
-        return RestApi.getConfiguration().getDeserializer();
+        return getConfiguration().getDeserializer();
     }
 
     protected ErrorDeserializer getErrorDeserializer() {
-        return RestApi.getConfiguration().getErrorDeserializer();
+        return getConfiguration().getErrorDeserializer();
     }
 
+    protected Logger getLogger() {
+        return getConfiguration().getLogger();
+    }
+
+    protected boolean isConfigured() {
+        return getConfiguration() != null;
+    }
+
+    protected RestApiConfiguration getConfiguration(){
+        return RestApi.getConfiguration();
+    }
 
 }
