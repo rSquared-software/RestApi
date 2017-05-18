@@ -8,6 +8,7 @@ import android.text.TextUtils;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -16,7 +17,9 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.Authenticator;
+import okhttp3.CertificatePinner;
 import okhttp3.ConnectionPool;
+import okhttp3.ConnectionSpec;
 import okhttp3.FormBody;
 import okhttp3.HttpUrl;
 import okhttp3.MediaType;
@@ -89,6 +92,15 @@ public abstract class Request<T> {
                 .connectionPool(new ConnectionPool(1, timeout, TimeUnit.MILLISECONDS))
                 .connectTimeout(timeout, TimeUnit.MILLISECONDS)
                 .readTimeout(timeout, TimeUnit.MILLISECONDS);
+        ConnectionSpec connectionSpec = configuration.getConnectionSpec();
+        if (connectionSpec != null) {
+            clientBuilder.connectionSpecs(Collections.singletonList(connectionSpec));
+        }
+
+        CertificatePinner certificatePinner = configuration.getCertificatePinner();
+        if (certificatePinner != null) {
+            clientBuilder.certificatePinner(certificatePinner);
+        }
 
         final BasicAuthorization basicAuthorization = configuration.getBasicAuthorization();
         if (basicAuthorization != null) {
@@ -604,7 +616,7 @@ public abstract class Request<T> {
         return getConfiguration() != null;
     }
 
-    protected RestApiConfiguration getConfiguration(){
+    protected RestApiConfiguration getConfiguration() {
         return RestApi.getConfiguration();
     }
 

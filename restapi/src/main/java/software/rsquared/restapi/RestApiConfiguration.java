@@ -10,6 +10,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import okhttp3.CertificatePinner;
+import okhttp3.ConnectionSpec;
 import software.rsquared.androidlogger.Level;
 import software.rsquared.androidlogger.Logger;
 import software.rsquared.androidlogger.logcat.LogcatLogger;
@@ -62,6 +64,10 @@ public class RestApiConfiguration {
     private Map<String, String> headers = new HashMap<>();
 
     private ErrorCallback errorCallback;
+
+    private ConnectionSpec connectionSpec;
+
+    private CertificatePinner certificatePinner;
 
     /**
      * Timeout for the connections.
@@ -320,6 +326,24 @@ public class RestApiConfiguration {
         for (int code : successStatusCodes) {
             this.successStatusCodes.add(code);
         }
+        return this;
+    }
+
+    public ConnectionSpec getConnectionSpec() {
+        return connectionSpec;
+    }
+
+    public RestApiConfiguration setConnectionSpec(ConnectionSpec connectionSpec) {
+        this.connectionSpec = connectionSpec;
+        return this;
+    }
+
+    public CertificatePinner getCertificatePinner() {
+        return certificatePinner;
+    }
+
+    public RestApiConfiguration setCertificatePinner(CertificatePinner certificatePinner) {
+        this.certificatePinner = certificatePinner;
         return this;
     }
 
