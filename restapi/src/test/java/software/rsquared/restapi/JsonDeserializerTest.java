@@ -23,7 +23,7 @@ public class JsonDeserializerTest {
 
     @Before
     public void setUp() throws Exception {
-        mDeserializer = new JsonDeserializer();
+        mDeserializer = new JsonDeserializer(new JsonDeserializer.Config().setIntBoolean(true));
     }
 
     @After
@@ -36,6 +36,7 @@ public class JsonDeserializerTest {
         StringObjectRequest request = new StringObjectRequest();
         StringObject result = request.read();
         assertEquals("test string", result.mString);
+        assertEquals(2, result.mBoolean.length);
     }
 
     @Test
@@ -69,7 +70,7 @@ public class JsonDeserializerTest {
     private class B<T>{
         T read(){
             try {
-                return mDeserializer.read(getClass(), "{\"msg\":\"test string\"}");
+                return mDeserializer.read(getClass(), "{\"msg\":\"test string\", \"bool\":[\"1\",\"0\"]}");
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -80,6 +81,10 @@ public class JsonDeserializerTest {
     private static class StringObject{
         @JsonProperty("msg")
         String mString;
+
+        @JsonProperty("bool")
+        boolean[] mBoolean;
+
     }
 
 }

@@ -85,6 +85,9 @@ public class ObjectToJsonSerializer implements JsonSerializer {
             module.addSerializer(boolean[].class, new com.fasterxml.jackson.databind.JsonSerializer<boolean[]>() {
                 @Override
                 public void serialize(boolean[] value, JsonGenerator gen, SerializerProvider serializers) throws IOException, JsonProcessingException {
+                    if (value == null) {
+                        return;
+                    }
                     int[] array = new int[value.length];
                     for (int i = 0; i < value.length; i++) {
                         Boolean aBoolean = value[i];
