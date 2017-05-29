@@ -4,7 +4,7 @@
 
 ```Gradle
 dependencies {
-    compile 'software.rsquared:rest-api:1.1.7'
+    compile 'software.rsquared:rest-api:1.1.9'
 }
 ```
 
