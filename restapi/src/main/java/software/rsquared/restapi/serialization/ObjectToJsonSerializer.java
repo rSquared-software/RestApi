@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 
 import software.rsquared.restapi.Parameter;
-import software.rsquared.restapi.RestApi;
 import software.rsquared.restapi.RestObject;
 import software.rsquared.restapi.exceptions.SerializationException;
 
@@ -79,7 +78,7 @@ public class ObjectToJsonSerializer implements JsonSerializer {
             module.addSerializer(boolean.class, new com.fasterxml.jackson.databind.JsonSerializer<Boolean>() {
                 @Override
                 public void serialize(Boolean value, JsonGenerator gen, SerializerProvider serializers) throws IOException, JsonProcessingException {
-                    gen.writeNumber(value ? 1 : 0);
+                    gen.writeNumber(value != null && value ? 1 : 0);
                 }
             });
             module.addSerializer(boolean[].class, new com.fasterxml.jackson.databind.JsonSerializer<boolean[]>() {
@@ -162,7 +161,7 @@ public class ObjectToJsonSerializer implements JsonSerializer {
 
     @Override
     public String toJsonString(@NonNull List<Parameter> parameters) {
-        if (parameters.isEmpty()){
+        if (parameters.isEmpty()) {
             return "";
         }
         ObjectNode node = (ObjectNode) parameters.get(0).getValue();

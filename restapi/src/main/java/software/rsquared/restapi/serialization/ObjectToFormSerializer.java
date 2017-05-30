@@ -74,7 +74,7 @@ public class ObjectToFormSerializer implements Serializer {
             module.addSerializer(boolean.class, new com.fasterxml.jackson.databind.JsonSerializer<Boolean>() {
                 @Override
                 public void serialize(Boolean value, JsonGenerator gen, SerializerProvider serializers) throws IOException, JsonProcessingException {
-                    gen.writeNumber(value ? 1 : 0);
+                    gen.writeNumber(value != null && value ? 1 : 0);
                 }
             });
             module.addSerializer(boolean[].class, new com.fasterxml.jackson.databind.JsonSerializer<boolean[]>() {

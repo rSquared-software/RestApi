@@ -75,53 +75,54 @@ public class JsonDeserializer implements Deserializer {
                 }
             });
         }
-        if (config.intBoolean) {
-            module.addDeserializer(Boolean.class, new com.fasterxml.jackson.databind.JsonDeserializer<Boolean>() {
-                @Override
-                public Boolean deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JsonProcessingException {
-                    if (TextUtils.isEmpty(p.getText())){
-                        return null;
-                    }
-                    String valueText = p.getText();
+        module.addDeserializer(Boolean.class, new com.fasterxml.jackson.databind.JsonDeserializer<Boolean>() {
+            @Override
+            public Boolean deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JsonProcessingException {
+                if (TextUtils.isEmpty(p.getText())){
+                    return null;
+                }
+                String valueText = p.getText();
+                try {
+                    return Integer.parseInt(valueText) > 0;
+                } catch (NumberFormatException e) {
+                    return Boolean.parseBoolean(valueText);
+                }
+            }
+        });
+        module.addDeserializer(boolean.class, new com.fasterxml.jackson.databind.JsonDeserializer<Boolean>() {
+            @Override
+            public Boolean deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JsonProcessingException {
+                if (TextUtils.isEmpty(p.getText())){
+                    throw new IOException("Cannot deserialize null primitive value");
+                }
+                String valueText = p.getText();
+                try {
+                    return Integer.parseInt(valueText) > 0;
+                } catch (NumberFormatException ignored) {
+                    return Boolean.parseBoolean(valueText);
+                }
+            }
+        });
+        module.addDeserializer(boolean[].class, new com.fasterxml.jackson.databind.JsonDeserializer<boolean[]>() {
+            @Override
+            public boolean[] deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JsonProcessingException {
+                String[] value = p.readValueAs(String[].class);
+                if (value == null) {
+                    return null;
+                }
+                boolean[] array = new boolean[value.length];
+                for (int i = 0; i < value.length; i++) {
+                    String valueText = value[i];
                     try {
-                        int i = Integer.parseInt(valueText);
-                        return i > 0;
-                    } catch (NumberFormatException e) {
-                        throw new IOException("Cannot deserialize boolean value of " + valueText);
+                        array[i] = Integer.parseInt(valueText) > 0;
+                    } catch (NumberFormatException ignored) {
+                        array[i] = Boolean.parseBoolean(valueText);
                     }
                 }
-            });
-            module.addDeserializer(boolean.class, new com.fasterxml.jackson.databind.JsonDeserializer<Boolean>() {
-                @Override
-                public Boolean deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JsonProcessingException {
-                    if (TextUtils.isEmpty(p.getText())){
-                        throw new IOException("Cannot deserialize null primitive value");
-                    }
-                    String valueText = p.getText();
-                    try {
-                        int i = Integer.parseInt(valueText);
-                        return i > 0;
-                    } catch (NumberFormatException e) {
-                        throw new IOException("Cannot deserialize boolean value of " + valueText);
-                    }
-                }
-            });
-            module.addDeserializer(boolean[].class, new com.fasterxml.jackson.databind.JsonDeserializer<boolean[]>() {
-                @Override
-                public boolean[] deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JsonProcessingException {
-                    int[] value = p.readValueAs(int[].class);
-                    if (value == null) {
-                        return null;
-                    }
-                    boolean[] array = new boolean[value.length];
-                    for (int i = 0; i < value.length; i++) {
-                        int v = value[i];
-                        array[i] = v > 0;
-                    }
-                    return array;
-                }
-            });
-        }
+                return array;
+            }
+        });
+
     }
 
     @Override
@@ -186,23 +187,13 @@ public class JsonDeserializer implements Deserializer {
 
     public static class Config {
         private boolean timeInSeconds;
-        private boolean intBoolean;
 
         /**
-         * Set true if time should be deserialized as unix time seconds
+         * Set true if time should be deserialized from unix time seconds. This works with {@link Date} and {@link Calendar}
          */
         public Config setTimeInSeconds(boolean timeInSeconds) {
             this.timeInSeconds = timeInSeconds;
             return this;
         }
-
-        /**
-         * Set true if booleans should be deserialized as 0 / 1
-         */
-        public Config setIntBoolean(boolean intBoolean) {
-            this.intBoolean = intBoolean;
-            return this;
-        }
-
     }
 }

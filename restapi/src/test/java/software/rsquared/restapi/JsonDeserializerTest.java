@@ -23,7 +23,7 @@ public class JsonDeserializerTest {
 
     @Before
     public void setUp() throws Exception {
-        mDeserializer = new JsonDeserializer(new JsonDeserializer.Config().setIntBoolean(true));
+        mDeserializer = new JsonDeserializer(new JsonDeserializer.Config());
     }
 
     @After
@@ -37,6 +37,8 @@ public class JsonDeserializerTest {
         StringObject result = request.read();
         assertEquals("test string", result.mString);
         assertEquals(2, result.mBoolean.length);
+        assertEquals(true, result.mBoolean[0]);
+        assertEquals(false, result.mBoolean[1]);
     }
 
     @Test
