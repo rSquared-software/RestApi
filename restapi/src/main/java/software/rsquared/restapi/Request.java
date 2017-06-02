@@ -249,6 +249,7 @@ public abstract class Request<T> {
 
         if (!userService.isLogged()) {
             if (!userService.onNotLogged(this)) {
+                cancel();
                 return;
             }
         }
@@ -261,8 +262,11 @@ public abstract class Request<T> {
         try {
             userService.refreshToken();
         } catch (Exception e) {
-            userService.logout();
-            throw new RefreshTokenException("Problem during obtaining refresh token", e);
+            if (!userService.onRefreshTokenFailed(new RefreshTokenException("Problem during obtaining refresh token", e))){
+                cancel();
+                //noinspection UnnecessaryReturnStatement
+                return;
+            }
         } finally {
             LOCK.unlock();
         }

@@ -2,6 +2,8 @@ package software.rsquared.restapi;
 
 import android.support.annotation.WorkerThread;
 
+import software.rsquared.restapi.exceptions.RefreshTokenException;
+
 /**
  * @author Rafal Zajfert
  */
@@ -13,8 +15,6 @@ public interface RestAuthorizationService {
 
     void refreshToken();
 
-    void logout();
-
     Authorization getAuthorization();
 
     /**
@@ -25,4 +25,11 @@ public interface RestAuthorizationService {
      */
     @WorkerThread
     boolean onNotLogged(Request request);
+
+    /**
+     *
+     * @return false if request should stop working, true otherwise
+     */
+    @WorkerThread
+    boolean onRefreshTokenFailed(RefreshTokenException e);
 }

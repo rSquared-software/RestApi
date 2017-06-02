@@ -6,7 +6,7 @@ import android.os.Build;
 /**
  * @author Rafal Zajfert
  */
-public class RefreshTokenException extends RuntimeException {
+public class RefreshTokenException extends IllegalStateException {
 
     public RefreshTokenException() {
     }
@@ -23,8 +23,5 @@ public class RefreshTokenException extends RuntimeException {
         super(cause);
     }
 
-    @TargetApi(Build.VERSION_CODES.N)
-    public RefreshTokenException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
-        super(message, cause, enableSuppression, writableStackTrace);
-    }
+
 }
