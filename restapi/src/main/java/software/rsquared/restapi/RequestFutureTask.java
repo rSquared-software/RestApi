@@ -5,6 +5,7 @@ import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
+import java.net.SocketTimeoutException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
@@ -138,6 +139,16 @@ class RequestFutureTask<T> extends FutureTask<T> implements RequestFuture<T> {
                 return (RequestException) cause;
             } else if (cause instanceof RuntimeException) {
                 throw (RuntimeException) cause;
+            } else if (cause instanceof SocketTimeoutException || cause instanceof TimeoutException) {
+                return new RequestException((Exception) cause);
+            } else {
+                Throwable subCause = cause.getCause();
+                if (subCause != null) {
+                    if (subCause instanceof SocketTimeoutException || subCause instanceof TimeoutException) {
+                        return new RequestException((Exception) subCause);
+                    }
+                }
+
             }
         }
         return new RequestException(e);

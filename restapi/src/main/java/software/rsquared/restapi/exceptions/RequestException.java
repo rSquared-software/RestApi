@@ -3,6 +3,7 @@ package software.rsquared.restapi.exceptions;
 import android.support.annotation.NonNull;
 import android.text.TextUtils;
 
+import java.net.SocketTimeoutException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -82,16 +83,6 @@ public class RequestException extends ExecutionException {
      */
     public static final int INTERRUPTED = -2;
 
-    /**
-     * Blocking operation times out
-     */
-    public static final int TIMEOUT = -3;
-
-    /**
-     * Obtaining access token before request execution failed
-     */
-    public static final int INVALID_ACCESS_TOKEN = -3;
-
     private final int responseCode;
 
     private final String name;
@@ -108,10 +99,10 @@ public class RequestException extends ExecutionException {
         message = e.getMessage();
         if (e instanceof InterruptedException) {
             responseCode = RequestException.INTERRUPTED;
-        } else if (e instanceof TimeoutException) {
-            responseCode = RequestException.TIMEOUT;
+        } else if (e instanceof SocketTimeoutException || e instanceof TimeoutException) {
+            responseCode = RequestException.CODE_TIMEOUT;
         } else if (e instanceof AccessTokenException) {
-            responseCode = RequestException.INVALID_ACCESS_TOKEN;
+            responseCode = RequestException.CODE_UNAUTHORIZED;
         } else {
             responseCode = RequestException.UNKNOWN;
         }

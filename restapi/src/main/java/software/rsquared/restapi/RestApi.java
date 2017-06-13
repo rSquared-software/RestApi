@@ -13,6 +13,7 @@ import java.util.Map;
 import software.rsquared.restapi.exceptions.RequestException;
 import software.rsquared.restapi.listeners.RequestListener;
 import software.rsquared.restapi.listeners.RequestPoolListener;
+import software.rsquared.restapi.listeners.SyncRequestListener;
 
 /**
  * TODO: Documentation
@@ -48,6 +49,16 @@ public class RestApi {
 
     public static <E> E executeSync(@NonNull Request<E> request) throws RequestException {
         return request.execute().get();
+    }
+
+    @Nullable
+    public static <E> E executeSync(@NonNull Request<E> request, @Nullable SyncRequestListener<E> listener) {
+        try {
+            return request.execute(listener).get();
+        } catch (RequestException e) {
+            //exceptions should be caught in listener
+            return null;
+        }
     }
 
     public static <E> void execute(@NonNull final Request<E> request, final int requestCode, @Nullable final RequestListener<E> listener) {
