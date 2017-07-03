@@ -24,7 +24,7 @@ import software.rsquared.restapi.listeners.RequestListener;
  * @see RequestFuture
  * @see FutureTask
  */
-class RequestFutureTask<T> extends FutureTask<T> implements RequestFuture<T> {
+public class RequestFutureTask<T> extends FutureTask<T> implements RequestFuture<T> {
 
     @Nullable
     private static Handler handler;
@@ -32,12 +32,25 @@ class RequestFutureTask<T> extends FutureTask<T> implements RequestFuture<T> {
     @Nullable
     private RequestListener<T> listener;
 
+
+    @Deprecated
+    public RequestFutureTask(@NonNull Callable<T> callable) {
+        super(callable);
+        throw new UnsupportedOperationException();
+    }
+
+    @Deprecated
+    public RequestFutureTask(@NonNull Runnable runnable, T result) {
+        super(runnable, result);
+        throw new UnsupportedOperationException();
+    }
+
     /**
      * Creates a FutureTask that will, upon running, execute the given Callable.
      *
      * @param callable the callable task
      */
-    RequestFutureTask(@NonNull Callable<T> callable, @Nullable ErrorCallback errorCallback) {
+    public RequestFutureTask(@NonNull Callable<T> callable, @Nullable ErrorCallback errorCallback) {
         super(callable);
         this.errorCallback = errorCallback;
     }
@@ -48,7 +61,7 @@ class RequestFutureTask<T> extends FutureTask<T> implements RequestFuture<T> {
      * @param callable the callable task
      * @param listener the listener that will be called when execution finished
      */
-    RequestFutureTask(@NonNull Callable<T> callable, ErrorCallback errorCallback, @Nullable RequestListener<T> listener) {
+    public RequestFutureTask(@NonNull Callable<T> callable, ErrorCallback errorCallback, @Nullable RequestListener<T> listener) {
         super(callable);
         this.errorCallback = errorCallback;
         this.listener = listener;

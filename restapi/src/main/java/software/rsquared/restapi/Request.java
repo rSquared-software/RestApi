@@ -1,13 +1,17 @@
 package software.rsquared.restapi;
 
+import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.WorkerThread;
 import android.text.TextUtils;
+import android.util.Log;
 
 import java.io.File;
 import java.io.IOException;
+import java.security.KeyStore;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -15,6 +19,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509TrustManager;
 
 import okhttp3.Authenticator;
 import okhttp3.CertificatePinner;
@@ -28,6 +37,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.Route;
+import okhttp3.TlsVersion;
 import software.rsquared.androidlogger.Logger;
 import software.rsquared.restapi.exceptions.InitialRequirementsException;
 import software.rsquared.restapi.exceptions.RefreshTokenException;
@@ -57,8 +67,8 @@ public abstract class Request<T> {
 
     private static final ThreadLock LOCK = new ThreadLock();
 
-    protected final OkHttpClient httpClient;
-    private final RequestExecutor executor;
+    protected OkHttpClient httpClient;
+    private RequestExecutor executor;
     private final List<Parameter> bodyParameters = new ArrayList<>();
     private final List<Parameter> urlParameters = new ArrayList<>();
     private final Map<String, String> headerMap = new HashMap<>();
@@ -80,16 +90,54 @@ public abstract class Request<T> {
             throw new IllegalStateException("RestApi must be configured before using requests");
         }
         RestApiConfiguration configuration = getConfiguration();
-        httpClient = createHttpClient(configuration);
+        iniRequest(configuration);
+    }
+
+    protected void iniRequest(RestApiConfiguration configuration) {
+        httpClient = createHttpClient(configuration).build();
         executor = new RequestExecutor(1, configuration.getTimeout());
         userService = configuration.getRestAuthorizationService();
     }
 
+    public static OkHttpClient.Builder enableTls12OnPreLollipop(OkHttpClient.Builder client) {
+        if (Build.VERSION.SDK_INT >= 16 && Build.VERSION.SDK_INT < 22) {
+            try {
+                SSLContext sc = SSLContext.getInstance("TLSv1.2");
+                sc.init(null, null, null);
+                TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(
+                        TrustManagerFactory.getDefaultAlgorithm());
+                trustManagerFactory.init((KeyStore) null);
+                TrustManager[] trustManagers = trustManagerFactory.getTrustManagers();
+                if (trustManagers.length != 1 || !(trustManagers[0] instanceof X509TrustManager)) {
+                    throw new IllegalStateException("Unexpected default trust managers:"
+                            + Arrays.toString(trustManagers));
+                }
+                X509TrustManager trustManager = (X509TrustManager) trustManagers[0];
+
+                client.sslSocketFactory(new Tls12SocketFactory(sc.getSocketFactory()), trustManager);
+
+                ConnectionSpec cs = new ConnectionSpec.Builder(ConnectionSpec.MODERN_TLS)
+                        .tlsVersions(TlsVersion.TLS_1_2)
+                        .build();
+
+                List<ConnectionSpec> specs = new ArrayList<>();
+                specs.add(cs);
+
+                client.connectionSpecs(specs);
+            } catch (Exception exc) {
+                Log.e("OkHttpTLSCompat", "Error while setting TLS 1.2", exc);
+            }
+        }
+
+        return client;
+    }
+
     @NonNull
-    private OkHttpClient createHttpClient(RestApiConfiguration configuration) {
+    protected OkHttpClient.Builder createHttpClient(RestApiConfiguration configuration) {
         int timeout = configuration.getTimeout();
         OkHttpClient.Builder clientBuilder = new OkHttpClient.Builder()
                 .connectionPool(new ConnectionPool(1, timeout, TimeUnit.MILLISECONDS))
+                .followSslRedirects(true)
                 .connectTimeout(timeout, TimeUnit.MILLISECONDS)
                 .readTimeout(timeout, TimeUnit.MILLISECONDS);
         ConnectionSpec connectionSpec = configuration.getConnectionSpec();
@@ -114,25 +162,28 @@ public abstract class Request<T> {
                 }
             });
         }
-        return clientBuilder.build();
+        if (configuration.isEnableTls12OnPreLollipop()){
+            return enableTls12OnPreLollipop(clientBuilder);
+        }
+        return clientBuilder;
     }
 
     /**
      * {@inheritDoc}
      */
-    RequestFuture<T> execute() {
+    protected RequestFuture<T> execute() {
         return execute(null);
     }
 
     /**
      * {@inheritDoc}
      */
-    RequestFuture<T> execute(@Nullable RequestListener<T> listener) {
+    protected RequestFuture<T> execute(@Nullable RequestListener<T> listener) {
         return execute(createRequestTask(), listener);
     }
 
     @NonNull
-    private RequestFuture<T> execute(Callable<T> task, @Nullable RequestListener<T> listener) {
+    protected RequestFuture<T> execute(Callable<T> task, @Nullable RequestListener<T> listener) {
         RequestFuture<T> future = executor.submit(task, ignoreErrorCallback ? null : getConfiguration().getErrorCallback(), listener);
         executor.shutdown();
         return future;
@@ -262,7 +313,7 @@ public abstract class Request<T> {
         try {
             userService.refreshToken();
         } catch (Exception e) {
-            if (!userService.onRefreshTokenFailed(new RefreshTokenException("Problem during obtaining refresh token", e))){
+            if (!userService.onRefreshTokenFailed(new RefreshTokenException("Problem during obtaining refresh token", e))) {
                 cancel();
                 //noinspection UnnecessaryReturnStatement
                 return;

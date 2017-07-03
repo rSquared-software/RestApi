@@ -69,6 +69,8 @@ public class RestApiConfiguration {
 
     private CertificatePinner certificatePinner;
 
+    private boolean enableTls12OnPreLollipop = false;
+
     /**
      * Timeout for the connections.
      * A value of 0 means no timeout, otherwise values must be between 1 and Integer.MAX_VALUE milliseconds.<p>
@@ -344,6 +346,15 @@ public class RestApiConfiguration {
 
     public RestApiConfiguration setCertificatePinner(CertificatePinner certificatePinner) {
         this.certificatePinner = certificatePinner;
+        return this;
+    }
+
+    public boolean isEnableTls12OnPreLollipop() {
+        return enableTls12OnPreLollipop;
+    }
+
+    public RestApiConfiguration setEnableTls12OnPreLollipop(boolean enableTls12OnPreLollipop) {
+        this.enableTls12OnPreLollipop = enableTls12OnPreLollipop;
         return this;
     }
 
