@@ -55,11 +55,7 @@ public class RestApiConfiguration {
     @NonNull
     private Serializer serializer = new ObjectToFormSerializer();
 
-    private RestAuthorizationService userService;
-
     private MockFactory mockFactory;
-
-    private Class<? extends DefaultErrorResponse> errorResponseClass;
 
     private RestAuthorizationService restAuthorizationService;
 

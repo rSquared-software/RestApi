@@ -41,6 +41,7 @@ public class JsonErrorDeserializer implements ErrorDeserializer {
     private Class<DefaultErrorResponse> getErrorClass() {
         return DefaultErrorResponse.class;
     }
+
     public static class Config {
         private Class<? extends DefaultErrorResponse> errorClass = DefaultErrorResponse.class;
 

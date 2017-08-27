@@ -162,28 +162,28 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-public class CustomMockFactory extends MockFactory {
-    @Override
-    public <T> T getMockResponse(Request<T> request) {
-        if (BuildConfig.DEBUG) {
-            if (request instanceof GetVersion) {
-                return (T) getVersion();
+    public class CustomMockFactory extends MockFactory {
+        @Override
+        public <T> T getMockResponse(Request<T> request) {
+            if (BuildConfig.DEBUG) {
+                if (request instanceof GetVersion) {
+                    return (T) getVersion();
+                }
             }
+            return null;
         }
-        return null;
-    }
 
-    @NonNull
-    private Version getVersion() {
-        Version version = new Version();
-        ApiVersion apiVersion = new ApiVersion();
-        apiVersion.apiVersion = "1.0.0";
-        apiVersion.expirationDate = Calendar.getInstance();
-        apiVersion.expirationDate.setTimeInMillis(System.currentTimeMillis() + 100000);
-        version.version = apiVersion;
-        return version;
+        @NonNull
+        private Version getVersion() {
+            Version version = new Version();
+            ApiVersion apiVersion = new ApiVersion();
+            apiVersion.apiVersion = "1.0.0";
+            apiVersion.expirationDate = Calendar.getInstance();
+            apiVersion.expirationDate.setTimeInMillis(System.currentTimeMillis() + 100000);
+            version.version = apiVersion;
+            return version;
+        }
     }
-}
 
     private class GetVersion extends GetRequest<Version> {
 
