@@ -4,7 +4,7 @@
 
 ```Gradle
 dependencies {
-    compile 'software.rsquared:rest-api:1.1.12'
+    compile 'software.rsquared:rest-api:1.1.19'
 }
 ```
 
@@ -42,11 +42,12 @@ RestApi.setConfiguration(new RestApi.Config()
                         .setSerializeNullValues(true)))
                 .setErrorDeserializer(new JsonErrorDeserializer(new JsonErrorDeserializer.Config()
                         .setErrorClass(DefaultErrorResponse.class)))
+                .setMockFactory(new CustomMockFactory())
         );
 ```
 
 ### Model
-If you use default json serializer/deserializer then model should be created with Jackson annotations e.g.:
+If you want to use default json serializer/deserializer then model should be created with Jackson annotations e.g.:
 ```java
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Version {
@@ -129,6 +130,33 @@ RestApi.pool(RestApi.SERIAL_EXECUTOR) //or RestApi.THREAD_POOL_EXECUTOR
                 return false;
             }
         });
+```
+
+
+### MockFactory example
+```java
+public class CustomMockFactory extends MockFactory {
+    @Override
+    public <T> T getMockResponse(Request<T> request) {
+        if (BuildConfig.DEBUG) {
+            if (request instanceof GetVersion) {
+                return (T) getVersion();
+            }
+        }
+        return null;
+    }
+
+    @NonNull
+    private Version getVersion() {
+        Version version = new Version();
+        ApiVersion apiVersion = new ApiVersion();
+        apiVersion.apiVersion = "1.0.0";
+        apiVersion.expirationDate = Calendar.getInstance();
+        apiVersion.expirationDate.setTimeInMillis(System.currentTimeMillis() + 100000);
+        version.version = apiVersion;
+        return version;
+    }
+}
 ```
 
 ## Developed By

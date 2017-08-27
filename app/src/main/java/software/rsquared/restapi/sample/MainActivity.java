@@ -7,16 +7,16 @@ import android.support.v7.app.AppCompatActivity;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.Calendar;
+
 import software.rsquared.androidlogger.Logger;
 import software.rsquared.restapi.GetRequest;
+import software.rsquared.restapi.MockFactory;
+import software.rsquared.restapi.Request;
 import software.rsquared.restapi.RestApi;
 import software.rsquared.restapi.RestApiConfiguration;
 import software.rsquared.restapi.exceptions.RequestException;
 import software.rsquared.restapi.listeners.RequestListener;
-import software.rsquared.restapi.listeners.RequestPoolListener;
-
-import java.util.Calendar;
-import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -28,6 +28,7 @@ public class MainActivity extends AppCompatActivity {
         RestApi.setConfiguration(new RestApiConfiguration()
                         .setScheme(RestApiConfiguration.HTTP)
                         .setHost("api.host.com")
+                        .setMockFactory(new CustomMockFactory())
 //                .setPort(80)
 //                .setInitialRequirements(new InitialRequirements() {
 //                    @Override
@@ -86,23 +87,23 @@ public class MainActivity extends AppCompatActivity {
 
 //
 //
-        RestApi.pool(RestApi.SERIAL_EXECUTOR)
-                .add(new GetVersion(), 1)
-                .add(new GetVersion(), 2)
-                .add(new GetVersion(), 3)
-                .execute(new RequestPoolListener() {
-                    @Override
-                    public void onSuccess(@NonNull Map<Integer, Object> result) {
+//        RestApi.pool(RestApi.SERIAL_EXECUTOR)
+//                .add(new GetVersion(), 1)
+//                .add(new GetVersion(), 2)
+//                .add(new GetVersion(), 3)
+//                .execute(new RequestPoolListener() {
+//                    @Override
+//                    public void onSuccess(@NonNull Map<Integer, Object> result) {
+//
+//                    }
+//
+//                    @Override
+//                    public boolean onFailed(RequestException e, int requestCode) {
+//                        return false;
+//                    }
+//                });
 
-                    }
-
-                    @Override
-                    public boolean onFailed(RequestException e, int requestCode) {
-                        return false;
-                    }
-                });
-
-//TODO next futures
+//TODO next features
 //        RestApi.get(new TypeReference<List<User>>() {}, "v1", "user")
 //                .withAccessToken()
 //                .with("username", "Rafal")
@@ -160,6 +161,29 @@ public class MainActivity extends AppCompatActivity {
                     '}';
         }
     }
+
+public class CustomMockFactory extends MockFactory {
+    @Override
+    public <T> T getMockResponse(Request<T> request) {
+        if (BuildConfig.DEBUG) {
+            if (request instanceof GetVersion) {
+                return (T) getVersion();
+            }
+        }
+        return null;
+    }
+
+    @NonNull
+    private Version getVersion() {
+        Version version = new Version();
+        ApiVersion apiVersion = new ApiVersion();
+        apiVersion.apiVersion = "1.0.0";
+        apiVersion.expirationDate = Calendar.getInstance();
+        apiVersion.expirationDate.setTimeInMillis(System.currentTimeMillis() + 100000);
+        version.version = apiVersion;
+        return version;
+    }
+}
 
     private class GetVersion extends GetRequest<Version> {
 

@@ -57,6 +57,8 @@ public class RestApiConfiguration {
 
     private RestAuthorizationService userService;
 
+    private MockFactory mockFactory;
+
     private Class<? extends DefaultErrorResponse> errorResponseClass;
 
     private RestAuthorizationService restAuthorizationService;
@@ -356,6 +358,15 @@ public class RestApiConfiguration {
     public RestApiConfiguration setEnableTls12OnPreLollipop(boolean enableTls12OnPreLollipop) {
         this.enableTls12OnPreLollipop = enableTls12OnPreLollipop;
         return this;
+    }
+
+    public RestApiConfiguration setMockFactory(MockFactory mockFactory) {
+        this.mockFactory = mockFactory;
+        return this;
+    }
+
+    public MockFactory getMockFactory() {
+        return mockFactory;
     }
 
     public Logger getLogger() {

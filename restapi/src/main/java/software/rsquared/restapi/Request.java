@@ -79,6 +79,7 @@ public abstract class Request<T> {
     private long minExecutionTime;
     private boolean authorizedRequest;
     private RestAuthorizationService userService;
+    private MockFactory mockFactory;
     private boolean ignoreErrorCallback;
     private boolean disableLogging;
 
@@ -97,6 +98,7 @@ public abstract class Request<T> {
         httpClient = createHttpClient(configuration).build();
         executor = new RequestExecutor(1, configuration.getTimeout());
         userService = configuration.getRestAuthorizationService();
+        mockFactory = configuration.getMockFactory();
     }
 
     public static OkHttpClient.Builder enableTls12OnPreLollipop(OkHttpClient.Builder client) {
@@ -265,7 +267,7 @@ public abstract class Request<T> {
      * Mock of Request if this method returns non null object then http request will not be executed
      */
     protected T mock() {
-        return null;
+        return mockFactory == null ? null : mockFactory.getMockResponse(this);
     }
 
     /**
