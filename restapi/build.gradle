@@ -31,7 +31,7 @@ dependencies {
     testCompile 'junit:junit:4.12'
     compile 'com.fasterxml.jackson.core:jackson-databind:2.8.7'
     compile 'com.squareup.okhttp3:okhttp:3.8.1'
-    compile 'software.rsquared:android-logger:1.2.0'
+    compile 'software.rsquared:android-logger:1.2.1'
 }
 
 Properties properties = new Properties()
@@ -42,7 +42,7 @@ publish {
     userOrg = 'rsquared'
     groupId = 'software.rsquared'
     artifactId = 'rest-api'
-    publishVersion = '1.1.19'
+    publishVersion = '1.1.20'
     desc = 'Library to simplify android rest api connecton'
     website = 'https://github.com/rSquared-software/RestApi'
     bintrayUser = properties.getProperty("bintray.oss.user")

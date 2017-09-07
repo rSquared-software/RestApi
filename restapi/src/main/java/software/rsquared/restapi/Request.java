@@ -30,6 +30,7 @@ import okhttp3.CertificatePinner;
 import okhttp3.ConnectionPool;
 import okhttp3.ConnectionSpec;
 import okhttp3.FormBody;
+import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
@@ -397,11 +398,15 @@ public abstract class Request<T> {
         }
         if (isSuccess(response)) {
             Class<? extends Request> aClass = getClass();
-            //noinspection unchecked
-            return (T) getDeserializer().read(aClass, content);
+            T result = getDeserializer().read(aClass, content);
+            readHeaders(response.headers(), result);
+            return result;
         } else {
             throw getErrorDeserializer().read(status, content);
         }
+    }
+
+    protected void readHeaders(Headers headers, T result) {
     }
 
     /**
