@@ -37,6 +37,7 @@ import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import okhttp3.ResponseBody;
 import okhttp3.Route;
 import okhttp3.TlsVersion;
 import software.rsquared.androidlogger.Logger;
@@ -392,7 +393,11 @@ public abstract class Request<T> {
             return null;
         }
         int status = response.code();
-        String content = response.body().string();
+        ResponseBody body = response.body();
+        String content = null;
+        if (body != null) {
+            content = body.string();
+        }
         if (!disableLogging) {
             getLogger().v("Response from:", getClassCodeAnchor() + "\n" + content);
         }
