@@ -101,6 +101,7 @@ public abstract class Request<T> {
         executor = new RequestExecutor(1, configuration.getTimeout());
         userService = configuration.getRestAuthorizationService();
         mockFactory = configuration.getMockFactory();
+        mediaType = configuration.getMediaType();
     }
 
     public static OkHttpClient.Builder enableTls12OnPreLollipop(OkHttpClient.Builder client) {
@@ -402,13 +403,17 @@ public abstract class Request<T> {
             getLogger().v("Response from:", getClassCodeAnchor() + "\n" + content);
         }
         if (isSuccess(response)) {
-            Class<? extends Request> aClass = getClass();
-            T result = getDeserializer().read(aClass, content);
+            T result = readResult(content);
             readHeaders(response.headers(), result);
             return result;
         } else {
             throw getErrorDeserializer().read(status, content);
         }
+    }
+
+    protected T readResult(String content) throws IOException {
+        Class<? extends Request> aClass = getClass();
+        return getDeserializer().read(aClass, content);
     }
 
     protected void readHeaders(Headers headers, T result) {

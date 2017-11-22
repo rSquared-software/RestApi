@@ -12,11 +12,11 @@ import java.util.Set;
 
 import okhttp3.CertificatePinner;
 import okhttp3.ConnectionSpec;
+import okhttp3.MediaType;
 import software.rsquared.androidlogger.Level;
 import software.rsquared.androidlogger.Logger;
 import software.rsquared.androidlogger.logcat.LogcatLogger;
 import software.rsquared.androidlogger.logcat.LogcatLoggerConfig;
-import software.rsquared.restapi.exceptions.DefaultErrorResponse;
 import software.rsquared.restapi.listeners.ErrorCallback;
 import software.rsquared.restapi.serialization.Deserializer;
 import software.rsquared.restapi.serialization.ErrorDeserializer;
@@ -39,6 +39,7 @@ public class RestApiConfiguration {
     private String scheme = HTTP;
     private String host;
     private int port = -1;
+    private MediaType mediaType = Request.APPLICATION_URLENCODED;
     @Nullable
     private BasicAuthorization basicAuthorization;
     @Nullable
@@ -353,6 +354,15 @@ public class RestApiConfiguration {
 
     public RestApiConfiguration setEnableTls12OnPreLollipop(boolean enableTls12OnPreLollipop) {
         this.enableTls12OnPreLollipop = enableTls12OnPreLollipop;
+        return this;
+    }
+
+    public MediaType getMediaType() {
+        return mediaType;
+    }
+
+    public RestApiConfiguration setMediaType(MediaType mediaType) {
+        this.mediaType = mediaType;
         return this;
     }
 

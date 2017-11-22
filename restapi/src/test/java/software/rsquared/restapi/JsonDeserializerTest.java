@@ -1,7 +1,6 @@
 package software.rsquared.restapi;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import software.rsquared.restapi.serialization.JsonDeserializer;
 
 import org.junit.After;
 import org.junit.Before;
@@ -9,7 +8,10 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+
+import software.rsquared.restapi.serialization.JsonDeserializer;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -52,10 +54,30 @@ public class JsonDeserializerTest {
         assertEquals(2, result.get(2).size());
     }
 
+    @Test
+    public void readComplex2() throws Exception {
+        MapMapRequest b = new MapMapRequest();
+        Map<String, Map<String, String>> result = b.read();
+        System.err.println(result);
+        assertNotNull(result);
+    }
+
     private class ListRequest extends A<List<Set<String>>>{
     }
 
     private class StringObjectRequest extends B<StringObject>{
+    }
+
+    private class MapMapRequest extends A<Map<String, Map<String, String>>>{
+        Map<String, Map<String, String>> read(){
+            try {
+                return mDeserializer.read(getClass(), "{\"a\":{\"b\":\"c\",\"d\":\"e\"},\"b\":{\"c\":\"d\",\"e\":\"f\",\"g\":\"h\"}}");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+
     }
 
     private class A<T>{
