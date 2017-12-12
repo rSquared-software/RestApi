@@ -1,7 +1,5 @@
 package software.rsquared.restapi;
 
-import software.rsquared.androidlogger.Logger;
-
 /**
  * Thread lock used for block code for different threads
  *
@@ -9,36 +7,35 @@ import software.rsquared.androidlogger.Logger;
  */
 class ThreadLock {
 
-    private boolean isLocked = false;
+	private boolean isLocked = false;
 
-    /**
-     * Try to block or wait for unlock resource
-     */
-    synchronized void lock() {
-        waitIfLocked();
-        isLocked = true;
-    }
+	/**
+	 * Try to block or wait for unlock resource
+	 */
+	synchronized void lock() {
+		waitIfLocked();
+		isLocked = true;
+	}
 
-    /**
-     * Unlock resource
-     *
-     * @see Object#notifyAll()
-     */
-    synchronized void unlock() {
-        isLocked = false;
-        notifyAll();
-    }
+	/**
+	 * Unlock resource
+	 *
+	 * @see Object#notifyAll()
+	 */
+	synchronized void unlock() {
+		isLocked = false;
+		notifyAll();
+	}
 
-    /**
-     * wait for resource unlock
-     *
-     */
-    synchronized void waitIfLocked() {
-        try {
-            while (isLocked) {
-                wait();
-            }
-        } catch (InterruptedException ignored) {
-        }
-    }
+	/**
+	 * wait for resource unlock
+	 */
+	synchronized void waitIfLocked() {
+		try {
+			while (isLocked) {
+				wait();
+			}
+		} catch (InterruptedException ignored) {
+		}
+	}
 }

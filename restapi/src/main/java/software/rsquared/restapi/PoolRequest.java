@@ -3,11 +3,11 @@ package software.rsquared.restapi;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
-import software.rsquared.restapi.listeners.RequestListener;
-import software.rsquared.restapi.listeners.RequestPoolListener;
-
 import java.util.LinkedHashMap;
 import java.util.Map;
+
+import software.rsquared.restapi.listeners.RequestListener;
+import software.rsquared.restapi.listeners.RequestPoolListener;
 
 /**
  * TODO Dokumentacja
@@ -24,7 +24,7 @@ abstract class PoolRequest<P extends PoolRequest> {
 
 	protected boolean cancelled;
 
-	protected PoolRequest(int poolSize){
+	protected PoolRequest(int poolSize) {
 		executor = new RequestExecutor(poolSize, 0L);
 	}
 

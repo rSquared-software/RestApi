@@ -7,5 +7,5 @@ import software.rsquared.restapi.exceptions.InitialRequirementsException;
  */
 @SuppressWarnings("WeakerAccess")
 public interface InitialRequirements {
-    void onCheckRequirements(Request<?> request) throws InitialRequirementsException;
+	void onCheckRequirements(Request<?> request) throws InitialRequirementsException;
 }

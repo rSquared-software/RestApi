@@ -10,32 +10,32 @@ import software.rsquared.restapi.exceptions.RequestException;
  */
 public abstract class RequestListener<T> {
 
-    /**
-     * this method will be invoked before request execution
-     */
-    public void onPreExecute() {
-    }
+	/**
+	 * this method will be invoked before request execution
+	 */
+	public void onPreExecute() {
+	}
 
-    /**
-     * All request task ends successfully and returns result
-     *
-     * @param result result object of request execution
-     */
-    public abstract void onSuccess(T result);
+	/**
+	 * All request task ends successfully and returns result
+	 *
+	 * @param result result object of request execution
+	 */
+	public abstract void onSuccess(T result);
 
-    /**
-     * Request execution failed and {@link RuntimeException} was thrown
-     *
-     * @param e exception with cause of the fail
-     */
-    public abstract void onFailed(RequestException e);
+	/**
+	 * Request execution failed and {@link RuntimeException} was thrown
+	 *
+	 * @param e exception with cause of the fail
+	 */
+	public abstract void onFailed(RequestException e);
 
-    /**
-     * this method will be invoked after request execution (regardless of the response result).
-     */
-    public void onPostExecute() {
-    }
+	/**
+	 * this method will be invoked after request execution (regardless of the response result).
+	 */
+	public void onPostExecute() {
+	}
 
-    public void onCancel(){
-    }
+	public void onCancel() {
+	}
 }

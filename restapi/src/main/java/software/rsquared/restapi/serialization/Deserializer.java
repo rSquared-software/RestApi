@@ -9,5 +9,5 @@ import java.io.IOException;
  */
 public interface Deserializer {
 
-    <T> T read(Class<?> requestClass, String content) throws IOException;
+	<T> T read(Class<?> requestClass, String content) throws IOException;
 }

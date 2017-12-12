@@ -52,7 +52,7 @@ public class JsonDeserializer implements Deserializer {
 		if (config.timeInSeconds) {
 			module.addDeserializer(Calendar.class, new com.fasterxml.jackson.databind.JsonDeserializer<Calendar>() {
 				@Override
-				public Calendar deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JsonProcessingException {
+				public Calendar deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
 					if (TextUtils.isEmpty(p.getText())) {
 						return null;
 					}
@@ -64,7 +64,7 @@ public class JsonDeserializer implements Deserializer {
 			});
 			module.addDeserializer(Date.class, new com.fasterxml.jackson.databind.JsonDeserializer<Date>() {
 				@Override
-				public Date deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JsonProcessingException {
+				public Date deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
 					if (TextUtils.isEmpty(p.getText())) {
 						return null;
 					}
@@ -75,7 +75,7 @@ public class JsonDeserializer implements Deserializer {
 		}
 		module.addDeserializer(Boolean.class, new com.fasterxml.jackson.databind.JsonDeserializer<Boolean>() {
 			@Override
-			public Boolean deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JsonProcessingException {
+			public Boolean deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
 				if (TextUtils.isEmpty(p.getText())) {
 					return null;
 				}
@@ -89,7 +89,7 @@ public class JsonDeserializer implements Deserializer {
 		});
 		module.addDeserializer(boolean.class, new com.fasterxml.jackson.databind.JsonDeserializer<Boolean>() {
 			@Override
-			public Boolean deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JsonProcessingException {
+			public Boolean deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
 				if (TextUtils.isEmpty(p.getText())) {
 					throw new IOException("Cannot deserialize null primitive value");
 				}
@@ -103,7 +103,7 @@ public class JsonDeserializer implements Deserializer {
 		});
 		module.addDeserializer(boolean[].class, new com.fasterxml.jackson.databind.JsonDeserializer<boolean[]>() {
 			@Override
-			public boolean[] deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JsonProcessingException {
+			public boolean[] deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
 				String[] value = p.readValueAs(String[].class);
 				if (value == null) {
 					return null;

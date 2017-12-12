@@ -29,8 +29,8 @@ android {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     testImplementation 'junit:junit:4.12'
-    api 'com.fasterxml.jackson.core:jackson-databind:2.9.2'
-    api 'com.squareup.okhttp3:okhttp:3.9.1'
+    compile 'com.fasterxml.jackson.core:jackson-databind:2.9.2'
+    compile 'com.squareup.okhttp3:okhttp:3.9.1'
     implementation 'software.rsquared:android-logger:1.2.1'
 }
 
@@ -42,7 +42,7 @@ publish {
     userOrg = 'rsquared'
     groupId = 'software.rsquared'
     artifactId = 'rest-api'
-    publishVersion = '1.1.22'
+    publishVersion = '1.1.24'
     desc = 'Library to simplify android rest api connecton'
     website = 'https://github.com/rSquared-software/RestApi'
     bintrayUser = properties.getProperty("bintray.oss.user")

@@ -1,8 +1,8 @@
 package software.rsquared.restapi.serialization;
 
-import software.rsquared.restapi.exceptions.RequestException;
-
 import java.io.IOException;
+
+import software.rsquared.restapi.exceptions.RequestException;
 
 /**
  * TODO: Documentation
@@ -11,5 +11,5 @@ import java.io.IOException;
  */
 public interface ErrorDeserializer {
 
-    RequestException read(int responseCode, String content) throws IOException;
+	RequestException read(int responseCode, String content) throws IOException;
 }

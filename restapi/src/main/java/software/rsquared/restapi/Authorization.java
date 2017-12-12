@@ -6,8 +6,8 @@ package software.rsquared.restapi;
 @SuppressWarnings("WeakerAccess")
 public interface Authorization {
 
-    /**
-     * Returns current access token for requests authorization
-     */
-    String getAccessToken();
+	/**
+	 * Returns current access token for requests authorization
+	 */
+	String getAccessToken();
 }
