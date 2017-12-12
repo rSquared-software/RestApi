@@ -658,7 +658,11 @@ public abstract class Request<T> {
 
     private RequestBody getJsonBody() {
         if (getSerializer() instanceof JsonSerializer) {
-            return RequestBody.create(APPLICATION_JSON, ((JsonSerializer) getSerializer()).toJsonString(bodyParameters));
+            String body = ((JsonSerializer) getSerializer()).toJsonString(bodyParameters);
+            if (!disableLogging) {
+                getLogger().d(body);
+            }
+            return RequestBody.create(APPLICATION_JSON, body);
         } else {
             throw new IllegalStateException("Json media type requires JsonSerializer. Set JsonSerializer via RestApi.Config().setSerializer()");
         }
