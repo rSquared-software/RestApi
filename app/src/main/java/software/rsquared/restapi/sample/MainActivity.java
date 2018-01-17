@@ -3,17 +3,19 @@ package software.rsquared.restapi.sample;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import java.util.Calendar;
+
+import software.rsquared.AnotherAppClass;
+
 public class MainActivity extends AppCompatActivity {
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
-
-
-	}
-
-
 //        RestApi.setConfiguration(new RestApiConfiguration()
 //                        .setScheme(RestApiConfiguration.HTTP)
 //                        .setHost("api.host.com")
@@ -42,19 +44,7 @@ public class MainActivity extends AppCompatActivity {
 //                        .setErrorClass(DefaultErrorResponse.class)))
 //        );
 
-//        GetVersion getVersion = new GetVersion();
-//        RestApi.execute(getVersion, new RequestListener<Version>() {
-//            @Override
-//            public void onSuccess(Version result) {
-//                Logger.error("onSuccess");
-//                Logger.debug(result);
-//            }
-//
-//            @Override
-//            public void onFailed(RequestException e) {
-//                Logger.error(e);
-//            }
-//        });
+		AnotherAppClass.getVersion();
 
 //        try {
 //            Version version = RestApi.executeSync(new GetVersion());
@@ -120,37 +110,38 @@ public class MainActivity extends AppCompatActivity {
 //
 //                    }
 //                });
-//    }
-//
-//    @JsonIgnoreProperties(ignoreUnknown = true)
-//    public static class Version {
-//        @JsonProperty("latest_version")
-//        private ApiVersion version;
-//
-//        @Override
-//        public String toString() {
-//            return "Version{" +
-//                    "version=" + version +
-//                    '}';
-//        }
-//    }
-//
-//    @JsonIgnoreProperties(ignoreUnknown = true)
-//    public static class ApiVersion {
-//        @JsonProperty("api_version")
-//        private String apiVersion;
-//        @JsonProperty("expiration_date")
-//        private Calendar expirationDate;
-//
-//        @Override
-//        public String toString() {
-//            return "ApiVersion{" +
-//                    "apiVersion='" + apiVersion + '\'' +
-//                    ", expirationDate=" + expirationDate +
-//                    '}';
-//        }
-//    }
-//
+	}
+
+	@JsonIgnoreProperties(ignoreUnknown = true)
+	public static class Version {
+		@JsonProperty("latest_version")
+		private ApiVersion version;
+
+		@Override
+		public String toString() {
+			return "Version{" +
+					"version=" + version +
+					'}';
+		}
+	}
+
+	@JsonIgnoreProperties(ignoreUnknown = true)
+	public static class ApiVersion {
+		@JsonProperty("api_version")
+		private String apiVersion;
+		@JsonProperty("expiration_date")
+		private Calendar expirationDate;
+
+		@Override
+		public String toString() {
+			return "ApiVersion{" +
+					"apiVersion='" + apiVersion + '\'' +
+					", expirationDate=" + expirationDate +
+					'}';
+		}
+	}
+
+	//
 //    public class CustomMockFactory extends MockFactory {
 //        @Override
 //        public <T> T getMockResponse(Request<T> request) {
@@ -174,11 +165,4 @@ public class MainActivity extends AppCompatActivity {
 //        }
 //    }
 //
-//    private class GetVersion extends GetRequest<Version> {
-//
-//        @Override
-//        protected void prepareRequest() {
-//            setUrlSegments("api", "version");
-//        }
-//    }
 }

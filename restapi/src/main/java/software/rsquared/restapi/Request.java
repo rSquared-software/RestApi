@@ -16,6 +16,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
@@ -25,7 +26,7 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
 
-import okhttp3.Authenticator;
+import okhttp3.Call;
 import okhttp3.CertificatePinner;
 import okhttp3.ConnectionPool;
 import okhttp3.ConnectionSpec;
@@ -38,9 +39,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
-import okhttp3.Route;
 import okhttp3.TlsVersion;
-import software.rsquared.androidlogger.Logger;
 import software.rsquared.restapi.exceptions.InitialRequirementsException;
 import software.rsquared.restapi.exceptions.RefreshTokenException;
 import software.rsquared.restapi.exceptions.RequestException;
@@ -85,6 +84,10 @@ public abstract class Request<T> {
 	private boolean ignoreErrorCallback;
 	private boolean disableLogging;
 
+	private final StringBuilder requestLog = new StringBuilder();
+	private final StringBuilder requestUrl = new StringBuilder();
+	private final StringBuilder requestCodeLine = new StringBuilder();
+
 	/**
 	 * Initial constructor for request. This constructor creates http client and prepare executor
 	 */
@@ -94,6 +97,10 @@ public abstract class Request<T> {
 		}
 		RestApiConfiguration configuration = getConfiguration();
 		iniRequest(configuration);
+		if (!isLoggingDisabled()) {
+			requestCodeLine.setLength(0);
+			requestCodeLine.append(RestApiUtils.getClassCodeLine(getClass().getName()));
+		}
 	}
 
 	protected void iniRequest(RestApiConfiguration configuration) {
@@ -157,14 +164,11 @@ public abstract class Request<T> {
 
 		final BasicAuthorization basicAuthorization = configuration.getBasicAuthorization();
 		if (basicAuthorization != null) {
-			clientBuilder.authenticator(new Authenticator() {
-				@Override
-				public okhttp3.Request authenticate(Route route, Response response) throws IOException {
-					okhttp3.Request.Builder requestBuilder = response.request()
-							.newBuilder()
-							.header("Authorization", basicAuthorization.getBasicAuthorization());
-					return requestBuilder.build();
-				}
+			clientBuilder.authenticator((route, response) -> {
+				okhttp3.Request.Builder requestBuilder = response.request()
+						.newBuilder()
+						.header("Authorization", basicAuthorization.getBasicAuthorization());
+				return requestBuilder.build();
 			});
 		}
 		if (configuration.isEnableTls12OnPreLollipop()) {
@@ -208,23 +212,20 @@ public abstract class Request<T> {
 	 */
 	@NonNull
 	protected Callable<T> createRequestTask() {
-		return new Callable<T>() {
-			@Override
-			public T call() throws Exception {
-				timer.start();
-				T result = executeRequest();
-				double time = timer.getElapsedTime();
-				if (time < minExecutionTime) {
-					try {
-						Thread.sleep((long) (minExecutionTime - time));
-					} catch (InterruptedException ignored) {
-					}
+		return () -> {
+			timer.start();
+			T result = executeRequest();
+			double time = timer.getElapsedTime();
+			if (time < minExecutionTime) {
+				try {
+					Thread.sleep((long) (minExecutionTime - time));
+				} catch (InterruptedException ignored) {
 				}
-				if (!disableLogging) {
-					getLogger().vF("%s execution took: %.3fms", getClassCodeAnchor(), timer.getElapsedTime());
-				}
-				return result;
 			}
+			if (!disableLogging) {
+				getLogger().debug(requestCodeLine.toString(), String.format(Locale.getDefault(), "Execution of " + getClassName() + " took: %.3fms", timer.getElapsedTime()));
+			}
+			return result;
 		};
 	}
 
@@ -238,7 +239,7 @@ public abstract class Request<T> {
 		T mock = mock();
 		if (mock != null) {
 			if (!disableLogging) {
-				getLogger().i("Mock response:", getClassCodeAnchor());
+				getLogger().debug(requestCodeLine.toString(), "Mocked response");
 			}
 			return mock;
 		}
@@ -246,24 +247,34 @@ public abstract class Request<T> {
 		prepareRequest();
 		HttpUrl url = getUrl();
 		if (!disableLogging) {
-			getLogger().v("Start execution:", getClassCodeAnchor(), url);
+			requestUrl.setLength(0);
+			requestUrl.append(url.toString());
+
+			requestLog.setLength(0);
+			requestLog.append("\n").append(url);
 		}
-		Response response = request(url);
+		Call request = createRequest(url);
+		if (!disableLogging) {
+			getLogger().debug(requestCodeLine.toString(), "Start execution " + getClassName() + ":" + requestLog.toString());
+		}
+		Response response = request.execute();
 		T result = readResponse(response);
 		response.close();
 		return result;
 	}
 
+
 	@NonNull
-	protected String getClassCodeAnchor() {
-		Class<?> enclosingClass = getClass().getEnclosingClass();
-		String name;
-		if (enclosingClass != null) {
-			name = enclosingClass.getSimpleName();
+	protected String getClassName() {
+		String name = this.getClass().getName();
+		String[] parts = name.split("\\.");
+		if (parts.length > 0 && !TextUtils.isEmpty(parts[parts.length - 1])) {
+			String classPart = parts[parts.length - 1];
+			parts = classPart.split("\\$");
+			return parts.length > 0 && !TextUtils.isEmpty(parts[parts.length - 1]) ? parts[parts.length - 1] : classPart;
 		} else {
-			name = getClass().getSimpleName();
+			return "Request";
 		}
-		return "(" + name + ".java:1)";
 	}
 
 	/**
@@ -341,7 +352,7 @@ public abstract class Request<T> {
 	}
 
 	protected boolean isLoggingDisabled() {
-		return ignoreErrorCallback;
+		return disableLogging;
 	}
 
 	/**
@@ -384,7 +395,7 @@ public abstract class Request<T> {
 	 * @see Response
 	 */
 	@WorkerThread
-	protected abstract Response request(HttpUrl url) throws IOException;
+	protected abstract Call createRequest(HttpUrl url) throws IOException;
 
 	/**
 	 * Reads response and parse to object or throws exception if execution failed
@@ -400,7 +411,7 @@ public abstract class Request<T> {
 			content = body.string();
 		}
 		if (!disableLogging) {
-			getLogger().v("Response from:", getClassCodeAnchor() + "\n" + content);
+			getLogger().verbose(requestCodeLine.toString(), "Response from " + getClassName() + " (" + requestUrl + "):\n" + content);
 		}
 		if (isSuccess(response)) {
 			T result = readResult(content);
@@ -609,7 +620,7 @@ public abstract class Request<T> {
 				String name = parameter.getName();
 				String path = parameter.getFilePath();
 				if (!disableLogging) {
-					getLogger().d(name + ":", path);
+					requestLog.append("\n").append(name).append(": ").append(path);
 				}
 				File file = new File(path);
 				if (file.exists()) {
@@ -622,7 +633,7 @@ public abstract class Request<T> {
 			String name = parameter.getName();
 			String value = String.valueOf(parameter.getValue());
 			if (!disableLogging) {
-				getLogger().d(name + ":", value);
+				requestLog.append("\n").append(name).append(": ").append(value);
 			}
 			if (!TextUtils.isEmpty(value)) {
 				bodyBuilder.addFormDataPart(name, value);
@@ -647,7 +658,7 @@ public abstract class Request<T> {
 			String name = parameter.getName();
 			String value = String.valueOf(parameter.getValue());
 			if (!disableLogging) {
-				getLogger().d(name + ":", value);
+				requestLog.append("\n").append(name).append(": ").append(value);
 			}
 			if (!TextUtils.isEmpty(value)) {
 				bodyBuilder.add(name, value);
@@ -660,7 +671,7 @@ public abstract class Request<T> {
 		if (getSerializer() instanceof JsonSerializer) {
 			String body = ((JsonSerializer) getSerializer()).toJsonString(bodyParameters);
 			if (!disableLogging) {
-				getLogger().d(body);
+				requestLog.append("\n").append(body);
 			}
 			return RequestBody.create(APPLICATION_JSON, body);
 		} else {
@@ -684,7 +695,7 @@ public abstract class Request<T> {
 		return getConfiguration().getErrorDeserializer();
 	}
 
-	protected Logger getLogger() {
+	protected RestApiLogger getLogger() {
 		return getConfiguration().getLogger();
 	}
 

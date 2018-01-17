@@ -1,13 +1,10 @@
 package software.rsquared.restapi;
 
-import android.support.annotation.Nullable;
-
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 import software.rsquared.restapi.exceptions.RequestException;
-import software.rsquared.restapi.listeners.RequestPoolListener;
 
 /**
  * TODO Dokumentacja
@@ -15,8 +12,6 @@ import software.rsquared.restapi.listeners.RequestPoolListener;
  * @author Rafal Zajfert
  */
 class SerialPoolRequest extends PoolRequest<SerialPoolRequest> {
-	@Nullable
-	private RequestPoolListener listener;
 	private Map<Integer, Object> results = new LinkedHashMap<>();
 	private Iterator<Map.Entry<Integer, Request>> executeIterator;
 
@@ -24,46 +19,42 @@ class SerialPoolRequest extends PoolRequest<SerialPoolRequest> {
 		super(1);
 	}
 
-
-	public void execute(@Nullable RequestPoolListener listener) {
+	@Override
+	public void execute() {
 		if (executed) {
 			throw new IllegalStateException("Already executed.");
 		}
 		executed = true;
 		executeIterator = requestPool.entrySet().iterator();
-		this.listener = listener;
-
-		if (this.listener != null) {
-			this.listener.onPreExecute();
-		}
+		onPreExecute();
 		executeNext();
 	}
 
 	private void executeNext() {
 		if (!cancelled && executeIterator.hasNext()) {
 			final Map.Entry<Integer, Request> requestEntry = executeIterator.next();
+			//noinspection unchecked
 			executor.submit(requestEntry.getValue().createRequestTask(), requestEntry.getValue().isErrorCallbackIgnored() ? null : RestApi.getConfiguration().getErrorCallback(), new PoolRequestListener(requestEntry.getKey()) {
 				@Override
 				public void onSuccess(Object result) {
 					int requestCode = getRequestCode();
+					SerialPoolRequest.this.onTaskSuccess(result, requestCode);
 					results.put(requestCode, result);
-					if (listener != null) {
-						listener.onTaskSuccess(result, requestCode);
-					}
 					executeNext();
 				}
 
 				@Override
 				public void onFailed(RequestException e) {
 					int requestCode = getRequestCode();
-					if (listener == null || !listener.onFailed(e, requestCode)) {
+					SerialPoolRequest.this.onFailed(e, requestCode);
+					if (canContinueAfterFailed(e, requestCode)) {
 						results.put(requestCode, null);
 						executeNext();
 					}
 				}
 
 				@Override
-				public void onCancel() {
+				public void onCanceled() {
 					int requestCode = getRequestCode();
 					cancelled = true;
 					results.put(requestCode, null);
@@ -72,16 +63,14 @@ class SerialPoolRequest extends PoolRequest<SerialPoolRequest> {
 			});
 		} else {
 			stopExecute();
-			if (listener != null) {
-				if (cancelled) {
-					listener.onCancel();
-				} else {
-					if (results.size() == requestPool.size()) {
-						listener.onSuccess(results);
-					}
-					listener.onPostExecute();
+			if (cancelled) {
+				SerialPoolRequest.this.onCanceled();
+			} else {
+				if (results.size() == requestPool.size()) {
+					SerialPoolRequest.this.onSuccess(results);
 				}
 			}
+			SerialPoolRequest.this.onPostExecute();
 		}
 	}
 }

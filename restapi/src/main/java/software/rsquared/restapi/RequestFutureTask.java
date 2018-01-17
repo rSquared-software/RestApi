@@ -102,12 +102,7 @@ public class RequestFutureTask<T> extends FutureTask<T> implements RequestFuture
 	@Override
 	public void run() {
 		if (listener != null) {
-			getHandler().post(new Runnable() {
-				@Override
-				public void run() {
-					listener.onPreExecute();
-				}
-			});
+			getHandler().post(() -> listener.onPreExecute());
 		}
 		super.run();
 	}
@@ -118,20 +113,17 @@ public class RequestFutureTask<T> extends FutureTask<T> implements RequestFuture
 	@Override
 	protected void done() {
 		if (listener != null) {
-			getHandler().post(new Runnable() {
-				@Override
-				public void run() {
-					if (RequestFutureTask.this.isCancelled()) {
-						listener.onCancel();
-					} else {
-						try {
-							listener.onSuccess(get());
-						} catch (RequestException e) {
-							listener.onFailed(e);
-						}
+			getHandler().post(() -> {
+				if (RequestFutureTask.this.isCancelled()) {
+					listener.onCanceled();
+				} else {
+					try {
+						listener.onSuccess(get());
+					} catch (RequestException e) {
+						listener.onFailed(e);
 					}
-					listener.onPostExecute();
 				}
+				listener.onPostExecute();
 			});
 		}
 		super.done();

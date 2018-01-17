@@ -8,12 +8,12 @@ import software.rsquared.restapi.exceptions.RequestException;
  *
  * @author Rafał Zajfert
  */
-public abstract class RequestListener<T> {
+public interface RequestListener<T> {
 
 	/**
 	 * this method will be invoked before request execution
 	 */
-	public void onPreExecute() {
+	default void onPreExecute() {
 	}
 
 	/**
@@ -21,21 +21,21 @@ public abstract class RequestListener<T> {
 	 *
 	 * @param result result object of request execution
 	 */
-	public abstract void onSuccess(T result);
+	void onSuccess(T result);
 
 	/**
 	 * Request execution failed and {@link RuntimeException} was thrown
 	 *
 	 * @param e exception with cause of the fail
 	 */
-	public abstract void onFailed(RequestException e);
+	void onFailed(RequestException e);
 
 	/**
 	 * this method will be invoked after request execution (regardless of the response result).
 	 */
-	public void onPostExecute() {
+	default void onPostExecute() {
 	}
 
-	public void onCancel() {
+	default void onCanceled() {
 	}
 }

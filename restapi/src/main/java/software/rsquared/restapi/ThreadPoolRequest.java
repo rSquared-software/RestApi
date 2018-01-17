@@ -1,12 +1,9 @@
 package software.rsquared.restapi;
 
-import android.support.annotation.Nullable;
-
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 import software.rsquared.restapi.exceptions.RequestException;
-import software.rsquared.restapi.listeners.RequestPoolListener;
 
 /**
  * TODO Dokumentacja
@@ -16,62 +13,60 @@ import software.rsquared.restapi.listeners.RequestPoolListener;
 class ThreadPoolRequest extends PoolRequest<ThreadPoolRequest> {
 
 	private Map<Integer, Object> results = new LinkedHashMap<>();
-	@Nullable
-	private RequestPoolListener listener;
 
 	public ThreadPoolRequest(int poolSize) {
 		super(poolSize);
 	}
 
-	public void execute(RequestPoolListener listener) {
+	public void execute() {
 		if (executed) {
 			throw new IllegalStateException("Already executed.");
 		}
 		executed = true;
 
-		this.listener = listener;
-		if (this.listener != null) {
-			this.listener.onPreExecute();
-		}
+		ThreadPoolRequest.this.onPreExecute();
 		for (Map.Entry<Integer, Request> entry : requestPool.entrySet()) {
+			//noinspection unchecked
 			executor.submit(entry.getValue().createRequestTask(), entry.getValue().isErrorCallbackIgnored() ? null : RestApi.getConfiguration().getErrorCallback(), new PoolRequestListener(entry.getKey()) {
 				@Override
 				public void onSuccess(Object result) {
 					int requestCode = getRequestCode();
+					ThreadPoolRequest.this.onTaskSuccess(result, requestCode);
 					results.put(requestCode, result);
-					if (ThreadPoolRequest.this.listener != null) {
-						ThreadPoolRequest.this.listener.onTaskSuccess(result, requestCode);
-					}
-					checkFinished();
+					checkFinished(false);
 				}
 
 				@Override
 				public void onFailed(RequestException e) {
 					int requestCode = getRequestCode();
-					if (ThreadPoolRequest.this.listener != null && ThreadPoolRequest.this.listener.onFailed(e, requestCode)) {
-						stopExecute();
-					} else {
+					ThreadPoolRequest.this.onFailed(e, requestCode);
+					if (ThreadPoolRequest.this.canContinueAfterFailed(e, requestCode)) {
 						results.put(requestCode, null);
+						checkFinished(false);
+					} else {
+						checkFinished(true);
 					}
-					checkFinished();
 				}
 
 				@Override
-				public void onCancel() {
+				public void onCanceled() {
 					cancelled = true;
 				}
 
-				private void checkFinished() {
-					if (results.size() == requestPool.size() || cancelled) {
+				private void checkFinished(boolean forceFinish) {
+					if (cancelled) {
 						stopExecute();
-						if (ThreadPoolRequest.this.listener != null) {
-							if (cancelled) {
-								ThreadPoolRequest.this.listener.onCancel();
-							} else {
-								ThreadPoolRequest.this.listener.onSuccess(results);
+						ThreadPoolRequest.this.onCanceled();
+					} else {
+						boolean allFinished = results.size() == requestPool.size();
+						if (allFinished || forceFinish) {
+							stopExecute();
+							if (allFinished) {
+								ThreadPoolRequest.this.onSuccess(results);
 							}
-							ThreadPoolRequest.this.listener.onPostExecute();
+							ThreadPoolRequest.this.onPostExecute();
 						}
+
 					}
 				}
 			});

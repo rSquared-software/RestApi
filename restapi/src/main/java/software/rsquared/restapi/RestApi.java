@@ -93,9 +93,9 @@ public class RestApi {
 			}
 
 			@Override
-			public void onCancel() {
+			public void onCanceled() {
 				if (listener != null) {
-					listener.onCancel();
+					listener.onCanceled();
 				}
 			}
 		});
@@ -194,9 +194,9 @@ public class RestApi {
 				}
 
 				@Override
-				public void onCancel() {
+				public void onCanceled() {
 					if (listener != null) {
-						listener.onCancel();
+						listener.onCanceled();
 					}
 				}
 			});

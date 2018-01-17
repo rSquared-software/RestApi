@@ -7,10 +7,9 @@ import software.rsquared.restapi.Request;
  *
  * @author Rafał Zajfert
  */
-public abstract class SyncRequestListener<T> extends RequestListener<T> {
+public interface SyncRequestListener<T> extends RequestListener<T> {
 
 	@Override
-	public void onSuccess(T result) {
-
+	default void onSuccess(T result) {
 	}
 }

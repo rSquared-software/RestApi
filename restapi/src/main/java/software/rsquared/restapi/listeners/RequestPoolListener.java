@@ -1,6 +1,8 @@
 package software.rsquared.restapi.listeners;
 
+import android.support.annotation.MainThread;
 import android.support.annotation.NonNull;
+import android.support.annotation.WorkerThread;
 
 import java.util.Map;
 
@@ -12,38 +14,54 @@ import software.rsquared.restapi.exceptions.RequestException;
  *
  * @author Rafal Zajfert
  */
-public abstract class RequestPoolListener {
+public interface RequestPoolListener {
 
 	/**
 	 * this method will be invoked before all requests execution
 	 */
-	public void onPreExecute() {
+	@MainThread
+	default void onPreExecute() {
 	}
 
 	/**
 	 * Called when task successfully finished
 	 */
-	public void onTaskSuccess(Object result, int requestCode) {
+	@MainThread
+	default void onTaskSuccess(Object result, int requestCode) {
 	}
 
 	/**
-	 * Called when all requests successfully (or onFailed returns false) finished
+	 * Called when all requests successfully (or {@link #canContinueAfterFailed(RequestException, int)} returns true) finished
 	 *
 	 * @param result results map, if request failed then value will be null
 	 */
-	public abstract void onSuccess(@NonNull Map<Integer, Object> result);
+	@MainThread
+	void onSuccess(@NonNull Map<Integer, Object> result);
+
+
+	/**
+	 * Called when task failed<p>
+	 * If you want to stop execution after failed, please override {@link #canContinueAfterFailed(RequestException, int)} method.
+	 */
+	@MainThread
+	boolean onFailed(RequestException e, int requestCode);
 
 	/**
 	 * Returns true if all unfinished requests should be cancelled, false otherwise
 	 */
-	public abstract boolean onFailed(RequestException e, int requestCode);
+	@WorkerThread
+	default boolean canContinueAfterFailed(RequestException e, int requestCode){
+		return true;
+	}
 
 	/**
 	 * this method will be invoked after all request executions (regardless of the response result).
 	 */
-	public void onPostExecute() {
+	@MainThread
+	default void onPostExecute() {
 	}
 
-	public void onCancel() {
+	@MainThread
+	default void onCanceled() {
 	}
 }

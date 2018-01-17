@@ -1,15 +1,11 @@
 package software.rsquared.restapi;
 
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-
 import java.io.IOException;
 import java.util.Map;
 
+import okhttp3.Call;
 import okhttp3.HttpUrl;
-import okhttp3.Request.Builder;
 import okhttp3.RequestBody;
-import okhttp3.Response;
 
 /**
  * Delete request
@@ -24,27 +20,19 @@ public abstract class DeleteRequest<T> extends Request<T> {
 	}
 
 	@Override
-	protected Response request(HttpUrl url) throws IOException {
-		return httpClient.newCall(createRequest(url, getRequestBody())).execute();
-	}
-
-
-	/**
-	 * Creates Request based on {@code url} and {@code body}
-	 */
-	@NonNull
-	private okhttp3.Request createRequest(@NonNull HttpUrl url, @Nullable RequestBody body) {
-		Builder requestBuilder = new Builder()
+	protected Call createRequest(HttpUrl url) throws IOException {
+		okhttp3.Request.Builder builder = new okhttp3.Request.Builder()
 				.url(url)
 				.addHeader(CONTENT_TYPE, getMediaType().toString());
 		for (Map.Entry<String, String> entry : getHeaders().entrySet()) {
-			requestBuilder.addHeader(entry.getKey(), entry.getValue());
+			builder.addHeader(entry.getKey(), entry.getValue());
 		}
+		RequestBody body = getRequestBody();
 		if (body != null) {
-			requestBuilder.delete(body);
+			builder.delete(body);
 		} else {
-			requestBuilder.delete();
+			builder.delete();
 		}
-		return requestBuilder.build();
+		return httpClient.newCall(builder.build());
 	}
 }

@@ -4,13 +4,25 @@
 
 ```Gradle
 dependencies {
-    compile 'software.rsquared:rest-api:1.1.20'
+    compile 'software.rsquared:rest-api:1.2.2'
 }
 ```
 
 [ ![Download](https://api.bintray.com/packages/rsquared/maven/rest-api/images/download.svg) ](https://bintray.com/rsquared/maven/rest-api/_latestVersion)
 
 ## Usage
+
+This library uses java 8, please make sure it is enabled in your project:
+
+```Gradle
+android {
+    ...
+    compileOptions {
+        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_1_8
+    }
+}
+```
 
 ### Configuration
 
@@ -31,7 +43,6 @@ RestApi.setConfiguration(new RestApi.Config()
                 })
                 .setRestAuthorizationService(UserService.getInstance())
                 .setTimeout(60000)
-                .setLogLevel(Level.VERBOSE)
                 .addHeader("lang", "en") //header that will be added to every request
                 .setAuthorization("user", "pass123") //basic auth
                 .setDeserializer(new JsonDeserializer(new JsonDeserializer.Config()

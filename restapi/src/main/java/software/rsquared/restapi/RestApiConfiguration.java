@@ -13,10 +13,6 @@ import java.util.Set;
 import okhttp3.CertificatePinner;
 import okhttp3.ConnectionSpec;
 import okhttp3.MediaType;
-import software.rsquared.androidlogger.Level;
-import software.rsquared.androidlogger.Logger;
-import software.rsquared.androidlogger.logcat.LogcatLogger;
-import software.rsquared.androidlogger.logcat.LogcatLoggerConfig;
 import software.rsquared.restapi.listeners.ErrorCallback;
 import software.rsquared.restapi.serialization.Deserializer;
 import software.rsquared.restapi.serialization.ErrorDeserializer;
@@ -29,6 +25,7 @@ import software.rsquared.restapi.serialization.Serializer;
 /**
  * @author Rafal Zajfert
  */
+@SuppressWarnings("ALL")
 public class RestApiConfiguration {
 
 	public static final String HTTP = "http";
@@ -45,7 +42,7 @@ public class RestApiConfiguration {
 	@Nullable
 	private InitialRequirements initialRequirements;
 
-	private Logger logger = new LogcatLogger();
+	private RestApiLogger logger = RestApiLoggerFactory.create();
 
 	@NonNull
 	private ErrorDeserializer errorDeserializer = new JsonErrorDeserializer();
@@ -266,16 +263,6 @@ public class RestApiConfiguration {
 	}
 
 	/**
-	 * Requests log {@link Level}
-	 * <p>
-	 * default: {@link Level#VERBOSE}
-	 */
-	public RestApiConfiguration setLogLevel(@NonNull Level level) {
-		((LogcatLogger) logger).setConfig(new LogcatLoggerConfig().setLevel(level));
-		return this;
-	}
-
-	/**
 	 * Add header to all requests
 	 */
 	public RestApiConfiguration addHeader(String name, String value) {
@@ -375,7 +362,11 @@ public class RestApiConfiguration {
 		return mockFactory;
 	}
 
-	public Logger getLogger() {
+	public void setLogger(RestApiLogger logger) {
+		this.logger = logger;
+	}
+
+	public RestApiLogger getLogger() {
 		return logger;
 	}
 }
