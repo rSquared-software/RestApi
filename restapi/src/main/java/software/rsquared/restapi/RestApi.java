@@ -167,8 +167,15 @@ public class RestApi {
 				}
 
 				@Override
-				public boolean onFailed(RequestException e, int requestCode) {
-					return listener != null && listener.onFailed(e, requestCode);
+				public void onFailed(RequestException e, int requestCode) {
+					if (listener != null) {
+						listener.onFailed(e, requestCode);
+					}
+				}
+
+				@Override
+				public boolean canContinueAfterFailed(RequestException e, int requestCode) {
+					return listener == null || listener.canContinueAfterFailed(e, requestCode);
 				}
 
 				@Override

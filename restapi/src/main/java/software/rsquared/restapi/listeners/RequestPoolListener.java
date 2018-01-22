@@ -44,7 +44,7 @@ public interface RequestPoolListener {
 	 * If you want to stop execution after failed, please override {@link #canContinueAfterFailed(RequestException, int)} method.
 	 */
 	@MainThread
-	boolean onFailed(RequestException e, int requestCode);
+	void onFailed(RequestException e, int requestCode);
 
 	/**
 	 * Returns true if all unfinished requests should be cancelled, false otherwise
