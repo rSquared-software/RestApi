@@ -34,7 +34,7 @@ class SerialPoolRequest extends PoolRequest<SerialPoolRequest> {
 		if (!cancelled && executeIterator.hasNext()) {
 			final Map.Entry<Integer, Request> requestEntry = executeIterator.next();
 			//noinspection unchecked
-			executor.submit(requestEntry.getValue().createRequestTask(), requestEntry.getValue().isErrorCallbackIgnored() ? null : RestApi.getConfiguration().getErrorCallback(), new PoolRequestListener(requestEntry.getKey()) {
+			executor.submit(requestEntry.getValue().createTask(api, listener), requestEntry.getValue().isErrorCallbackIgnored() ? null : RestApi.getConfiguration().getErrorCallback(), new PoolRequestListener(requestEntry.getKey()) {
 				@Override
 				public void onSuccess(Object result) {
 					int requestCode = getRequestCode();

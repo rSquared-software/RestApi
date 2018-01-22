@@ -27,7 +27,7 @@ class ThreadPoolRequest extends PoolRequest<ThreadPoolRequest> {
 		ThreadPoolRequest.this.onPreExecute();
 		for (Map.Entry<Integer, Request> entry : requestPool.entrySet()) {
 			//noinspection unchecked
-			executor.submit(entry.getValue().createRequestTask(), entry.getValue().isErrorCallbackIgnored() ? null : RestApi.getConfiguration().getErrorCallback(), new PoolRequestListener(entry.getKey()) {
+			executor.submit(entry.getValue().createTask(api, listener), entry.getValue().isErrorCallbackIgnored() ? null : RestApi.getConfiguration().getErrorCallback(), new PoolRequestListener(entry.getKey()) {
 				@Override
 				public void onSuccess(Object result) {
 					int requestCode = getRequestCode();

@@ -8,7 +8,9 @@ import android.util.SparseArray;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executor;
 
 import software.rsquared.restapi.exceptions.RequestException;
 import software.rsquared.restapi.listeners.RequestListener;
@@ -29,6 +31,7 @@ public class RestApi {
 	private static SparseArray<RequestFuture> requests = new SparseArray<>();
 	@NonNull
 	private static SparseArray<PoolRequest> poolRequests = new SparseArray<>();
+	private MockFactory mockFactory;
 
 	static RestApiConfiguration getConfiguration() {
 		return configuration;
@@ -118,6 +121,30 @@ public class RestApi {
 		if (pool != null) {
 			pool.cancel();
 		}
+	}
+
+	public java.util.concurrent.Executor getIOExecutor() {
+		return IOExecutor;
+	}
+
+	public java.util.concurrent.Executor getUiExecutor() {
+		return null;
+	}
+
+	public List<Checker> getCheckers() {
+		return null;
+	}
+
+	public MockFactory getMockFactory() {
+		return mockFactory;
+	}
+
+	public String getBaseUrl() {
+		return null;
+	}
+
+	public BasicAuthorization getBasicAuthorization() {
+		return null;
 	}
 
 	@IntDef({THREAD_POOL_EXECUTOR, SERIAL_EXECUTOR})

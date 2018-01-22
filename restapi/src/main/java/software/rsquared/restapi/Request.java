@@ -1,30 +1,24 @@
 package software.rsquared.restapi;
 
-import android.os.Build;
+import android.net.Uri;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.WorkerThread;
 import android.text.TextUtils;
-import android.util.Log;
 
 import java.io.File;
 import java.io.IOException;
-import java.security.KeyStore;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.Callable;
+import java.util.Set;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
-
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.TrustManagerFactory;
-import javax.net.ssl.X509TrustManager;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import okhttp3.Call;
 import okhttp3.CertificatePinner;
@@ -39,7 +33,6 @@ import okhttp3.OkHttpClient;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
-import okhttp3.TlsVersion;
 import software.rsquared.restapi.exceptions.InitialRequirementsException;
 import software.rsquared.restapi.exceptions.RefreshTokenException;
 import software.rsquared.restapi.exceptions.RequestException;
@@ -49,6 +42,8 @@ import software.rsquared.restapi.serialization.Deserializer;
 import software.rsquared.restapi.serialization.ErrorDeserializer;
 import software.rsquared.restapi.serialization.JsonSerializer;
 import software.rsquared.restapi.serialization.Serializer;
+
+import static software.rsquared.restapi.RestApiUtils.enableTls12OnPreLollipop;
 
 /**
  * Base implementation of the Request methods
@@ -62,86 +57,274 @@ public abstract class Request<T> {
 	public static final MediaType APPLICATION_URLENCODED = MediaType.parse("application/x-www-form-urlencoded");
 	public static final MediaType APPLICATION_JSON = MediaType.parse("application/json");
 
-	protected static final String ACCESS_TOKEN = "access_token";
-	protected static final String AUTHORIZATION = "BasicAuthorization";
 	protected static final String CONTENT_TYPE = "Content-Type";
+	protected static final String KEY_BASIC_AUTHORIZATION = "BasicAuthorization";
 
-	private static final ThreadLock LOCK = new ThreadLock();
+	private static final Executor DEFAULT_UI_EXECUTOR = new MainThreadExecutor();
 
-	protected OkHttpClient httpClient;
-	private RequestExecutor executor;
-	private final List<Parameter> bodyParameters = new ArrayList<>();
-	private final List<Parameter> urlParameters = new ArrayList<>();
+	@Nullable
+	private OkHttpClient httpClient;
+
+	@Nullable
+	private Executor ioExecutor;
+
+	@NonNull
+	private Executor uiExecutor = DEFAULT_UI_EXECUTOR;
+
+	@NonNull
+	private final HttpUrl.Builder urlBuilder = new HttpUrl.Builder();
+
+	@NonNull
+	private final Map<String, Object> bodyParameters = new LinkedHashMap<>();
+
+	@NonNull
+	private final Map<String, Object> queryParameters = new LinkedHashMap<>();
+
+	@NonNull
 	private final Map<String, String> headerMap = new HashMap<>();
-	private final Timer timer = new Timer();
-	private MediaType mediaType = APPLICATION_URLENCODED;
-	private String[] urlSegments;
-	private String url;
-	private long minExecutionTime;
-	private boolean authorizedRequest;
-	private RestAuthorizationService userService;
-	private MockFactory mockFactory;
-	private boolean ignoreErrorCallback;
-	private boolean disableLogging;
 
-	private final StringBuilder requestLog = new StringBuilder();
-	private final StringBuilder requestUrl = new StringBuilder();
-	private final StringBuilder requestCodeLine = new StringBuilder();
+	@NonNull
+	private final Timer timer = new Timer();
+
+	private long minExecutionTime = 0;
+
+	@Nullable
+	private String logParameters;
+
+	@Nullable
+	private final String logCreateCodeLine;
+
+	private RequestTask task;
+
+	private AtomicBoolean executed = new AtomicBoolean(false);
+
+	private T result;
 
 	/**
-	 * Initial constructor for request. This constructor creates http client and prepare executor
+	 * Initial constructor for request.
 	 */
 	protected Request() {
-		if (!isConfigured()) {
-			throw new IllegalStateException("RestApi must be configured before using requests");
-		}
-		RestApiConfiguration configuration = getConfiguration();
-		iniRequest(configuration);
-		if (!isLoggingDisabled()) {
-			requestCodeLine.setLength(0);
-			requestCodeLine.append(RestApiUtils.getClassCodeLine(getClass().getName()));
+		logCreateCodeLine = RestApiUtils.getClassCodeLine(getClass().getName());
+	}
+
+	protected void execute(RestApi api, RequestListener<T> listener) {
+		if (executed.compareAndSet(false, true)) {
+			task = createTask(api, listener);
+			executeTask(api, listener);
+		} else {
+			throw new IllegalStateException("Request currently executed!");
 		}
 	}
 
-	protected void iniRequest(RestApiConfiguration configuration) {
-		httpClient = createHttpClient(configuration).build();
-		executor = new RequestExecutor(1, configuration.getTimeout());
-		userService = configuration.getRestAuthorizationService();
-		mockFactory = configuration.getMockFactory();
-		mediaType = configuration.getMediaType();
+	private void executeTask(RestApi api, RequestListener<T> listener) {
+		Executor uiExecutor = api.getUiExecutor();
+		if (uiExecutor != null) {
+			this.uiExecutor = uiExecutor;
+		}
+
+		ioExecutor = api.getIOExecutor();
+		if (ioExecutor != null) {
+			ioExecutor.execute(task);
+		} else {
+			throw new IllegalStateException("RestApi required to specify IOExecutor!");
+		}
 	}
 
-	public static OkHttpClient.Builder enableTls12OnPreLollipop(OkHttpClient.Builder client) {
-		if (Build.VERSION.SDK_INT >= 16 && Build.VERSION.SDK_INT < 22) {
-			try {
-				SSLContext sc = SSLContext.getInstance("TLSv1.2");
-				sc.init(null, null, null);
-				TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(
-						TrustManagerFactory.getDefaultAlgorithm());
-				trustManagerFactory.init((KeyStore) null);
-				TrustManager[] trustManagers = trustManagerFactory.getTrustManagers();
-				if (trustManagers.length != 1 || !(trustManagers[0] instanceof X509TrustManager)) {
-					throw new IllegalStateException("Unexpected default trust managers:"
-							+ Arrays.toString(trustManagers));
+	public void cancel() {
+		if (task != null) {
+			task.cancel();
+		}
+	}
+
+	/**
+	 * Creates new instance of the task that have to be executed
+	 *
+	 * @param api
+	 * @param listener
+	 * @return callable instance of the request task
+	 */
+	@NonNull
+	protected RequestTask createTask(RestApi api, RequestListener<T> listener) {
+		return new RequestTask() {
+			@Override
+			protected void execute() throws RequestException {
+				timer.start();
+				result = executeRequest(api);
+				waitForMinExecutionTime();
+				getLogger().debug(logCreateCodeLine, String.format(Locale.getDefault(), "Execution of " + getClassName() + " took: %.3fms", timer.getElapsedTime()));
+			}
+
+			@Override
+			protected void onFailed(RequestException e) {
+			}
+		};
+	}
+
+	/**
+	 * This method invokes task to do by this request and return specified.
+	 *
+	 * @param api
+	 * @return requested object
+	 */
+	protected T executeRequest(RestApi api) throws RequestException {
+		computeCheckers(api);
+		T mock = getMockResponse(api.getMockFactory());
+		if (mock != null) {
+			getLogger().debug(logCreateCodeLine, "Mocked response");
+			return mock;
+		}
+		initUrl(api);
+		prepareRequest();
+		Call request = createRequest(urlBuilder.build());
+		getLogger().debug(logCreateCodeLine, "Start execution " + getClassName() + ":\n" + logParameters);
+		Response response = request.execute();
+		T result = readResponse(response);
+		response.close();
+		return result;
+	}
+
+	/**
+	 * Checks initial requirements before request execution e.g checks network connection. If any of requirement fails then {@link RequestException} will be thrown
+	 *
+	 * @throws RequestException exception with cause of fail
+	 */
+	protected void computeCheckers(RestApi api) throws RequestException {
+		List<Checker> checkers = api.getCheckers();
+		if (checkers != null) {
+			for (Checker checker : checkers) {
+				checker.check(this);
+			}
+		}
+	}
+
+	/**
+	 * Mock of Request if this method returns non null object then http request will not be executed
+	 */
+	protected T getMockResponse(MockFactory mockFactory) {
+		return mockFactory == null ? null : mockFactory.getMockResponse(this);
+	}
+
+	private void initUrl(RestApi api) {
+		String baseUrl = api.getBaseUrl();
+		Uri uri = Uri.parse(baseUrl);
+		urlBuilder.scheme(uri.getScheme());
+		urlBuilder.host(uri.getHost());
+		urlBuilder.port(uri.getPort());
+
+		BasicAuthorization basicAuthorization = api.getBasicAuthorization();
+		if (basicAuthorization != null) {
+			urlBuilder.username(basicAuthorization.getUser());
+			urlBuilder.password(basicAuthorization.getPassword());
+		} else {
+			String userInfo = uri.getUserInfo();
+			if (!TextUtils.isEmpty(userInfo)) {
+				String[] parts = userInfo.split(":", 2);
+				urlBuilder.username(parts[0]);
+				if (parts.length > 1) {
+					urlBuilder.password(parts[1]);
 				}
-				X509TrustManager trustManager = (X509TrustManager) trustManagers[0];
-
-				client.sslSocketFactory(new Tls12SocketFactory(sc.getSocketFactory()), trustManager);
-
-				ConnectionSpec cs = new ConnectionSpec.Builder(ConnectionSpec.MODERN_TLS)
-						.tlsVersions(TlsVersion.TLS_1_2)
-						.build();
-
-				List<ConnectionSpec> specs = new ArrayList<>();
-				specs.add(cs);
-
-				client.connectionSpecs(specs);
-			} catch (Exception exc) {
-				Log.e("OkHttpTLSCompat", "Error while setting TLS 1.2", exc);
 			}
 		}
 
-		return client;
+
+		List<String> segments = uri.getPathSegments();
+		if (segments != null) {
+			for (String segment : segments) {
+				urlBuilder.addPathSegment(segment);
+			}
+		}
+
+		Set<String> parameterNames = uri.getQueryParameterNames();
+		if (parameterNames != null) {
+			for (String name : parameterNames) {
+				urlBuilder.setQueryParameter(name, uri.getQueryParameter(name));
+			}
+		}
+
+		String fragment = uri.getFragment();
+		if (!TextUtils.isEmpty(fragment)) {
+			urlBuilder.fragment(fragment);
+		}
+	}
+
+	/**
+	 * Prepare all request properties
+	 *
+	 * @see #setUrl(String)
+	 * @see #setUrlSegments(String...)
+	 * @see #putParameter(String, Object)
+	 * @see #putQueryParameter(String, Object)
+	 */
+	protected abstract void prepareRequest();
+
+	/**
+	 * Method that execute this request and returns response from the server. Response must be closed
+	 *
+	 * @see Response
+	 */
+	@WorkerThread
+	protected abstract Call createRequest(HttpUrl url) throws RequestException;
+
+	/**
+	 * Returns complete api url. If additional parameters should be added than it must be done before this call
+	 *
+	 * @see #putUrlParameter(String, Object)
+	 */
+	protected HttpUrl getUrl() {
+		if (urlSegments == null && TextUtils.isEmpty(this.url)) {
+			throw new IllegalStateException("Set url in " + this.getClass().getSimpleName() + " prepareRequest method");
+		}
+		HttpUrl url;
+		if (!TextUtils.isEmpty(this.url)) {
+			if (needAuthorization() && userService != null && userService.getAuthorization() != null) {
+				String accessToken = ACCESS_TOKEN + "=" + userService.getAuthorization().getAccessToken();
+				if (!this.url.contains(accessToken)) {
+					int questionMarkPosition = this.url.indexOf('?');
+					char paramSeparator = questionMarkPosition >= 0 ? '&' : '?';
+					this.url += paramSeparator + accessToken;
+				}
+			}
+			url = HttpUrl.parse(this.url);
+
+		} else {
+
+
+			RestApiConfiguration configuration = getConfiguration();
+			HttpUrl.Builder builder = new HttpUrl.Builder();
+			builder.scheme(configuration.getScheme());
+			if (configuration.getPort() >= 0) {
+				builder.port(configuration.getPort());
+			}
+			builder.host(configuration.getHost());
+
+			BasicAuthorization basicAuthorization = configuration.getBasicAuthorization();
+			if (basicAuthorization != null) {
+				builder.username(basicAuthorization.getUser())
+						.password(basicAuthorization.getPassword());
+			}
+			for (String segment : urlSegments) {
+				builder.addPathSegment(segment);
+			}
+			for (Parameter param : queryParameters) {
+				builder.addQueryParameter(param.getName(), String.valueOf(param.getValue()));
+			}
+
+			if (needAuthorization() && userService != null && userService.getAuthorization() != null) {
+				builder.addQueryParameter(ACCESS_TOKEN, userService.getAuthorization().getAccessToken());
+			}
+			url = builder.build();
+		}
+		return url;
+	}
+
+	private void waitForMinExecutionTime() {
+		double time = timer.getElapsedTime();
+		if (time < minExecutionTime) {
+			try {
+				Thread.sleep((long) (minExecutionTime - time));
+			} catch (InterruptedException ignored) {
+			}
+		}
 	}
 
 	@NonNull
@@ -177,92 +360,6 @@ public abstract class Request<T> {
 		return clientBuilder;
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
-	protected RequestFuture<T> execute() {
-		return execute(null);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	protected RequestFuture<T> execute(@Nullable RequestListener<T> listener) {
-		return execute(createRequestTask(), listener);
-	}
-
-	@NonNull
-	protected RequestFuture<T> execute(Callable<T> task, @Nullable RequestListener<T> listener) {
-		RequestFuture<T> future = executor.submit(task, ignoreErrorCallback ? null : getConfiguration().getErrorCallback(), listener);
-		executor.shutdown();
-		return future;
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	public void cancel() {
-		executor.shutdownNow();
-	}
-
-	/**
-	 * Creates new instance of the task that have to be executed
-	 *
-	 * @return callable instance of the request task
-	 */
-	@NonNull
-	protected Callable<T> createRequestTask() {
-		return () -> {
-			timer.start();
-			T result = executeRequest();
-			double time = timer.getElapsedTime();
-			if (time < minExecutionTime) {
-				try {
-					Thread.sleep((long) (minExecutionTime - time));
-				} catch (InterruptedException ignored) {
-				}
-			}
-			if (!disableLogging) {
-				getLogger().debug(requestCodeLine.toString(), String.format(Locale.getDefault(), "Execution of " + getClassName() + " took: %.3fms", timer.getElapsedTime()));
-			}
-			return result;
-		};
-	}
-
-	/**
-	 * This method invokes task to do by this request and return specified.
-	 *
-	 * @return requested object
-	 */
-	protected T executeRequest() throws RequestException, IOException {
-		checkInitialRequirements(Request.this);
-		T mock = mock();
-		if (mock != null) {
-			if (!disableLogging) {
-				getLogger().debug(requestCodeLine.toString(), "Mocked response");
-			}
-			return mock;
-		}
-		checkAccessToken();
-		prepareRequest();
-		HttpUrl url = getUrl();
-		if (!disableLogging) {
-			requestUrl.setLength(0);
-			requestUrl.append(url.toString());
-
-			requestLog.setLength(0);
-			requestLog.append("\n").append(url);
-		}
-		Call request = createRequest(url);
-		if (!disableLogging) {
-			getLogger().debug(requestCodeLine.toString(), "Start execution " + getClassName() + ":" + requestLog.toString());
-		}
-		Response response = request.execute();
-		T result = readResponse(response);
-		response.close();
-		return result;
-	}
-
 
 	@NonNull
 	protected String getClassName() {
@@ -277,28 +374,6 @@ public abstract class Request<T> {
 		}
 	}
 
-	/**
-	 * Mock of Request if this method returns non null object then http request will not be executed
-	 */
-	protected T mock() {
-		return mockFactory == null ? null : mockFactory.getMockResponse(this);
-	}
-
-	/**
-	 * Checks initial requirements before request execution e.g checks network connection. If any of requirement fails then {@link RequestException} will be thrown
-	 *
-	 * @throws RequestException exception with cause of fail
-	 */
-	protected void checkInitialRequirements(Request<T> request) throws RequestException {
-		try {
-			InitialRequirements initialRequirements = getConfiguration().getInitialRequirements();
-			if (initialRequirements != null) {
-				initialRequirements.onCheckRequirements(request);
-			}
-		} catch (InitialRequirementsException e) {
-			throw new RequestException(e);
-		}
-	}
 
 	/**
 	 * This method will be executed only if {@link #needAuthorization()} method returns true.
@@ -380,24 +455,6 @@ public abstract class Request<T> {
 	}
 
 	/**
-	 * Prepare all request properties
-	 *
-	 * @see #setUrl(String)
-	 * @see #setUrlSegments(String...)
-	 * @see #putParameter(String, Object)
-	 * @see #putUrlParameter(String, Object)
-	 */
-	protected abstract void prepareRequest();
-
-	/**
-	 * Method that execute this request and returns response from the server. Response must be closed
-	 *
-	 * @see Response
-	 */
-	@WorkerThread
-	protected abstract Call createRequest(HttpUrl url) throws IOException;
-
-	/**
 	 * Reads response and parse to object or throws exception if execution failed
 	 */
 	protected T readResponse(Response response) throws IOException, RequestException {
@@ -438,56 +495,6 @@ public abstract class Request<T> {
 	}
 
 	/**
-	 * Returns complete api url. If additional parameters should be added than it must be done before this call
-	 *
-	 * @see #putUrlParameter(String, Object)
-	 */
-	protected HttpUrl getUrl() {
-		if (urlSegments == null && TextUtils.isEmpty(this.url)) {
-			throw new IllegalStateException("Set url in " + this.getClass().getSimpleName() + " prepareRequest method");
-		}
-		HttpUrl url;
-		if (!TextUtils.isEmpty(this.url)) {
-			if (needAuthorization() && userService != null && userService.getAuthorization() != null) {
-				String accessToken = ACCESS_TOKEN + "=" + userService.getAuthorization().getAccessToken();
-				if (!this.url.contains(accessToken)) {
-					int questionMarkPosition = this.url.indexOf('?');
-					char paramSeparator = questionMarkPosition >= 0 ? '&' : '?';
-					this.url += paramSeparator + accessToken;
-				}
-			}
-			url = HttpUrl.parse(this.url);
-
-		} else {
-			RestApiConfiguration configuration = getConfiguration();
-			HttpUrl.Builder builder = new HttpUrl.Builder();
-			builder.scheme(configuration.getScheme());
-			if (configuration.getPort() >= 0) {
-				builder.port(configuration.getPort());
-			}
-			builder.host(configuration.getHost());
-
-			BasicAuthorization basicAuthorization = configuration.getBasicAuthorization();
-			if (basicAuthorization != null) {
-				builder.username(basicAuthorization.getUser())
-						.password(basicAuthorization.getPassword());
-			}
-			for (String segment : urlSegments) {
-				builder.addPathSegment(segment);
-			}
-			for (Parameter param : urlParameters) {
-				builder.addQueryParameter(param.getName(), String.valueOf(param.getValue()));
-			}
-
-			if (needAuthorization() && userService != null && userService.getAuthorization() != null) {
-				builder.addQueryParameter(ACCESS_TOKEN, userService.getAuthorization().getAccessToken());
-			}
-			url = builder.build();
-		}
-		return url;
-	}
-
-	/**
 	 * Set api method url. If url will be sets by this method then all calls {@link #setUrlSegments(String...) setUrlSegments}, {@link #putParameter(String, Object) putParameter} or {@link #putUrlParameter(String, Object) putUrlParameter} will be ignored
 	 */
 	protected void setUrl(String url) {
@@ -515,14 +522,14 @@ public abstract class Request<T> {
 	 * Adds parameter to URL's query string.
 	 */
 	protected void putUrlParameter(@NonNull String name, @Nullable Object value) {
-		getSerializer().serialize(urlParameters, name, value);
+		getSerializer().serialize(queryParameters, name, value);
 	}
 
 	/**
 	 * Adds parameter to URL's query string.
 	 */
 	protected void putUrlParameter(@Nullable Object value) {
-		getSerializer().serialize(urlParameters, value);
+		getSerializer().serialize(queryParameters, value);
 	}
 
 	/**
@@ -567,7 +574,7 @@ public abstract class Request<T> {
 	 * Removes parameter from URL's query string.
 	 */
 	protected void removeUrlParameter(@NonNull String key) {
-		Iterator<Parameter> iterator = urlParameters.iterator();
+		Iterator<Parameter> iterator = queryParameters.iterator();
 		while (iterator.hasNext()) {
 			Parameter parameter = iterator.next();
 			if (key.equals(parameter.getName())) {
@@ -697,10 +704,6 @@ public abstract class Request<T> {
 
 	protected RestApiLogger getLogger() {
 		return getConfiguration().getLogger();
-	}
-
-	protected boolean isConfigured() {
-		return getConfiguration() != null;
 	}
 
 	protected RestApiConfiguration getConfiguration() {
