@@ -118,6 +118,14 @@ public class RequestException extends ExecutionException {
 		this.errorsMap = errorsMap;
 	}
 
+	public RequestException(String name, String message){
+		this.responseCode = UNKNOWN;
+		this.name = name;
+		this.message = message;
+		this.errorCode = UNKNOWN;
+		errorsMap = new HashMap<>();
+	}
+
 	/**
 	 * Http response code
 	 *

@@ -8,5 +8,7 @@ import software.rsquared.restapi.exceptions.RequestException;
  * @author Rafal Zajfert
  */
 public interface ErrorCallback {
+
 	void onError(RequestException e);
+
 }
