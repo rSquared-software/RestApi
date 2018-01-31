@@ -11,5 +11,5 @@ import software.rsquared.restapi.exceptions.RequestException;
  */
 public interface ErrorDeserializer {
 
-	RequestException read(int responseCode, String content) throws IOException;
+	RequestException deserialize(int responseCode, String content) throws IOException;
 }

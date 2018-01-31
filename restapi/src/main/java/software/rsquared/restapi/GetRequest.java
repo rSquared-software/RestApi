@@ -1,12 +1,13 @@
 package software.rsquared.restapi;
 
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 
 import java.util.Map;
 
 import okhttp3.Call;
 import okhttp3.HttpUrl;
+import okhttp3.OkHttpClient;
+import okhttp3.RequestBody;
 
 /**
  * Get request
@@ -21,30 +22,13 @@ public abstract class GetRequest<E> extends Request<E> {
 
 	@NonNull
 	@Override
-	protected Call createRequest(HttpUrl url) {
+	protected Call createRequest(OkHttpClient client, HttpUrl url, Map<String, String> headers, RequestBody requestBody) {
 		okhttp3.Request.Builder builder = new okhttp3.Request.Builder()
 				.url(url)
 				.get();
-		for (Map.Entry<String, String> entry : getHeaders().entrySet()) {
+		for (Map.Entry<String, String> entry : headers.entrySet()) {
 			builder.addHeader(entry.getKey(), entry.getValue());
 		}
-		return httpClient.newCall(builder.build());
-	}
-
-	/**
-	 * @deprecated Get request doesn't have body, use {@link #putUrlParameter(String, Object)} instead
-	 */
-	@Override
-	@Deprecated
-	protected void putParameter(@NonNull String name, Object value) {
-		super.putUrlParameter(name, value);
-	}
-
-	/**
-	 * Same as {@link #putUrlParameter(Object)}
-	 */
-	@Override
-	protected void putParameter(@Nullable Object value) {
-		super.putParameter(value);
+		return client.newCall(builder.build());
 	}
 }

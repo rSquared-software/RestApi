@@ -8,12 +8,11 @@ import software.rsquared.restapi.exceptions.RequestException;
 /**
  * Created by rafalo on 18.01.2018.
  */
-
 public abstract class AuthChecker implements Checker {
 
 	@Override
 	@WorkerThread
-	public void check(Request request) throws RequestException {
+	public synchronized void check(Request request) throws RequestException {
 		if (request instanceof Authorizable) {
 			if (!authorizationIsValid()) {
 				refreshAuthToken();

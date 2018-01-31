@@ -1,13 +1,14 @@
 package software.rsquared.restapi;
 
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 
-import java.io.IOException;
 import java.util.Map;
 
 import okhttp3.Call;
 import okhttp3.HttpUrl;
+import okhttp3.OkHttpClient;
+import okhttp3.RequestBody;
+import software.rsquared.restapi.exceptions.RequestException;
 
 /**
  * Head request
@@ -20,31 +21,15 @@ public abstract class HeadRequest<E> extends Request<E> {
 	protected HeadRequest() {
 	}
 
+	@NonNull
 	@Override
-	protected Call createRequest(HttpUrl url) throws IOException {
+	protected Call createRequest(OkHttpClient client, HttpUrl url, Map<String, String> headers, RequestBody requestBody) throws RequestException {
 		okhttp3.Request.Builder builder = new okhttp3.Request.Builder()
 				.url(url)
 				.head();
-		for (Map.Entry<String, String> entry : getHeaders().entrySet()) {
+		for (Map.Entry<String, String> entry : headers.entrySet()) {
 			builder.addHeader(entry.getKey(), entry.getValue());
 		}
-		return httpClient.newCall(builder.build());
-	}
-
-	/**
-	 * @deprecated Head request doesn't have body, use {@link #putUrlParameter(String, Object)} instead
-	 */
-	@Override
-	@Deprecated
-	protected void putParameter(@NonNull String name, Object value) {
-		super.putUrlParameter(name, value);
-	}
-
-	/**
-	 * Same as {@link #putUrlParameter(Object)}
-	 */
-	@Override
-	protected void putParameter(@Nullable Object value) {
-		super.putParameter(value);
+		return client.newCall(builder.build());
 	}
 }

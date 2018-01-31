@@ -66,5 +66,4 @@ class Timer {
 		return getElapsedTimeNs() / 1_000_000;
 	}
 
-	public interface State
 }

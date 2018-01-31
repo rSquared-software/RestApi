@@ -8,8 +8,8 @@ package software.rsquared.restapi;
 @SuppressWarnings("unused")
 public class Parameter {
 
-	@SuppressWarnings("WeakerAccess")
-	public static final String FILE_REGEX = "^_file\\{(.+)\\}$";
+	public static final String FILE_PREFIX = "__file";
+	private static final String FILE_REGEX = "^" + FILE_PREFIX + "\\{(.+)\\}$";
 
 	private String name;
 
@@ -42,7 +42,7 @@ public class Parameter {
 	//endregion
 
 	/**
-	 * Checks if value is path to file (string matches "_file{...}")
+	 * Checks if value is path to file (string matches "__file{...}")
 	 */
 	public boolean isFile() {
 		return value instanceof String && ((String) value).matches(FILE_REGEX);

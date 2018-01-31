@@ -3,13 +3,11 @@ package software.rsquared.restapi.serialization;
 import android.support.annotation.CallSuper;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.text.TextUtils;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
@@ -25,13 +23,12 @@ import java.util.List;
 import java.util.Map;
 
 import software.rsquared.restapi.Parameter;
-import software.rsquared.restapi.RestObject;
 
 /**
  * @author Rafal Zajfert
  */
 public class ObjectToFormSerializer implements Serializer {
-	private final ObjectMapper objectMapper = new ObjectMapper();
+	private final ObjectMapper objectMapper;
 	private final Config config;
 
 	public ObjectToFormSerializer() {
@@ -40,6 +37,7 @@ public class ObjectToFormSerializer implements Serializer {
 
 	public ObjectToFormSerializer(@NonNull Config config) {
 		this.config = config;
+		this.objectMapper = new ObjectMapper();
 		objectMapper.setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
 		SimpleModule module = new SimpleModule();
 		setupModule(module);
@@ -57,7 +55,7 @@ public class ObjectToFormSerializer implements Serializer {
 		module.addSerializer(File.class, new com.fasterxml.jackson.databind.JsonSerializer<File>() {
 			@Override
 			public void serialize(File value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
-				gen.writeString("_file{" + value.getAbsolutePath() + "}");
+				gen.writeString(Parameter.FILE_PREFIX + "{" + value.getAbsolutePath() + "}");
 			}
 		});
 
@@ -106,23 +104,10 @@ public class ObjectToFormSerializer implements Serializer {
 				}
 			});
 		}
-
 	}
 
 	@Override
-	public <T> void serialize(@NonNull List<Parameter> parameters, T object) {
-		if (object != null) {
-			String name = null;
-			if (isRestObject(object.getClass())) {
-				name = getObjectName(object);
-			}
-			serialize(parameters, name, object);
-		}
-	}
-
-
-	@Override
-	public <T> void serialize(@NonNull List<Parameter> parameters, @Nullable String name, T object) {
+	public void serialize(@NonNull List<Parameter> parameters, @NonNull String name, @Nullable Object object) {
 		if (object != null) {
 			JsonNode jsonNode = objectMapper.valueToTree(object);
 			addParameter(name, jsonNode, parameters);
@@ -148,19 +133,6 @@ public class ObjectToFormSerializer implements Serializer {
 		} else {
 			parameters.add(new Parameter(name, jsonNode.asText()));
 		}
-	}
-
-	private <T> String getObjectName(T object) {
-		RestObject restObject = object.getClass().getAnnotation(RestObject.class);
-		if (!TextUtils.isEmpty(restObject.value())) {
-			return restObject.value();
-		} else {
-			return object.getClass().getSimpleName();
-		}
-	}
-
-	private boolean isRestObject(Class<?> aClass) {
-		return aClass.getAnnotation(RestObject.class) != null;
 	}
 
 	public static class Config {

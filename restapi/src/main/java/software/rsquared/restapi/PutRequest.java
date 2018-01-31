@@ -1,10 +1,15 @@
 package software.rsquared.restapi;
 
-import java.io.IOException;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+
 import java.util.Map;
 
 import okhttp3.Call;
 import okhttp3.HttpUrl;
+import okhttp3.OkHttpClient;
+import okhttp3.RequestBody;
+import software.rsquared.restapi.exceptions.RequestException;
 
 /**
  * Put request
@@ -18,15 +23,26 @@ public abstract class PutRequest<T> extends Request<T> {
 	protected PutRequest() {
 	}
 
+	@NonNull
 	@Override
-	protected Call createRequest(HttpUrl url) throws IOException {
+	protected Call createRequest(OkHttpClient client, HttpUrl url, Map<String, String> headers, RequestBody requestBody) throws RequestException {
 		okhttp3.Request.Builder builder = new okhttp3.Request.Builder()
 				.url(url)
 				.addHeader(CONTENT_TYPE, getMediaType().toString());
-		for (Map.Entry<String, String> entry : getHeaders().entrySet()) {
+		for (Map.Entry<String, String> entry : headers.entrySet()) {
 			builder.addHeader(entry.getKey(), entry.getValue());
 		}
 		builder.put(getRequestBody());
-		return httpClient.newCall(builder.build());
+		return client.newCall(builder.build());
+	}
+
+	@Override
+	protected void putParameter(@Nullable Object value) {
+		super.putParameter(value);
+	}
+
+	@Override
+	protected void putParameter(@NonNull String name, @Nullable Object value) {
+		super.putParameter(name, value);
 	}
 }

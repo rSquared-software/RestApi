@@ -11,66 +11,78 @@ import software.rsquared.restapi.exceptions.RequestException;
  *
  * @author Rafal Zajfert
  */
-class SerialPoolRequest extends PoolRequest<SerialPoolRequest> {
+class SerialPoolRequest extends PoolRequest {
 	private Map<Integer, Object> results = new LinkedHashMap<>();
 	private Iterator<Map.Entry<Integer, Request>> executeIterator;
 
-	public SerialPoolRequest() {
-		super(1);
+	private boolean notified;
+
+	SerialPoolRequest() {
 	}
 
 	@Override
 	public void execute() {
-		if (executed) {
-			throw new IllegalStateException("Already executed.");
-		}
-		executed = true;
 		executeIterator = requestPool.entrySet().iterator();
 		onPreExecute();
-		executeNext();
+		notified = false;
+		checkAndExecuteNext(false);
+	}
+
+	private void checkAndExecuteNext(boolean forceCancel) {
+		if (cancelled.get() || notified) {
+			return;
+		}
+
+		if (results.size() == requestPool.size()) {
+			notified = true;
+			onSuccess(results);
+			onPostExecute();
+		} else if (forceCancel) {
+			notified = true;
+			cancel();
+			onPostExecute();
+		} else if (executeIterator.hasNext()) {
+			executeNext();
+		} else {
+			throw new IllegalStateException("results size != requests size and queue is empty!");
+		}
 	}
 
 	private void executeNext() {
-		if (!cancelled && executeIterator.hasNext()) {
-			final Map.Entry<Integer, Request> requestEntry = executeIterator.next();
-			//noinspection unchecked
-			executor.submit(requestEntry.getValue().createTask(api, listener), requestEntry.getValue().isErrorCallbackIgnored() ? null : RestApi.getConfiguration().getErrorCallback(), new PoolRequestListener(requestEntry.getKey()) {
-				@Override
-				public void onSuccess(Object result) {
-					int requestCode = getRequestCode();
-					SerialPoolRequest.this.onTaskSuccess(result, requestCode);
-					results.put(requestCode, result);
-					executeNext();
-				}
+		final Map.Entry<Integer, Request> entry = executeIterator.next();
+		Integer requestCode = entry.getKey();
+		Request request = entry.getValue();
 
-				@Override
-				public void onFailed(RequestException e) {
-					int requestCode = getRequestCode();
-					SerialPoolRequest.this.onFailed(e, requestCode);
-					if (canContinueAfterFailed(e, requestCode)) {
-						results.put(requestCode, null);
-						executeNext();
-					}
-				}
+		//noinspection unchecked
+		request.execute(api, new PoolRequestListener(requestCode) {
 
-				@Override
-				public void onCanceled() {
-					int requestCode = getRequestCode();
-					cancelled = true;
+			@Override
+			public void onSuccess(Object result) {
+				int requestCode = getRequestCode();
+				SerialPoolRequest.this.onTaskSuccess(result, requestCode);
+				results.put(requestCode, result);
+				checkAndExecuteNext(false);
+			}
+
+			@Override
+			public void onFailed(RequestException e) {
+				int requestCode = getRequestCode();
+				SerialPoolRequest.this.onFailed(e, requestCode);
+				if (SerialPoolRequest.this.canContinueAfterFailed(e, requestCode)) {
 					results.put(requestCode, null);
-					executeNext();
-				}
-			});
-		} else {
-			stopExecute();
-			if (cancelled) {
-				SerialPoolRequest.this.onCanceled();
-			} else {
-				if (results.size() == requestPool.size()) {
-					SerialPoolRequest.this.onSuccess(results);
+					checkAndExecuteNext(false);
+				} else {
+					checkAndExecuteNext(true);
 				}
 			}
-			SerialPoolRequest.this.onPostExecute();
-		}
+
+			@Override
+			public void onCanceled() {
+				if (!cancelled.get()) {
+					cancel();
+				}
+			}
+
+		});
 	}
 }

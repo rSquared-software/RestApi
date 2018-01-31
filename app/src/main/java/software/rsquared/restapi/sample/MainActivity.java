@@ -7,8 +7,10 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Calendar;
+import java.util.concurrent.Executors;
 
 import software.rsquared.AnotherAppClass;
+import software.rsquared.restapi.RestApi;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -44,7 +46,11 @@ public class MainActivity extends AppCompatActivity {
 //                        .setErrorClass(DefaultErrorResponse.class)))
 //        );
 
-		AnotherAppClass.getVersion();
+		RestApi restApi = new RestApi.Builder("http://w-api.ioio.software")
+				.setNetworkExecutor(Executors.newFixedThreadPool(10))
+				.build();
+
+		AnotherAppClass.getVersion(restApi);
 
 //        try {
 //            Version version = RestApi.executeSync(new GetVersion());

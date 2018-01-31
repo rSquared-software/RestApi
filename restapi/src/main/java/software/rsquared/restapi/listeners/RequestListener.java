@@ -1,5 +1,7 @@
 package software.rsquared.restapi.listeners;
 
+import android.support.annotation.UiThread;
+
 import software.rsquared.restapi.Request;
 import software.rsquared.restapi.exceptions.RequestException;
 
@@ -13,6 +15,7 @@ public interface RequestListener<T> {
 	/**
 	 * this method will be invoked before request execution
 	 */
+	@UiThread
 	default void onPreExecute() {
 	}
 
@@ -21,6 +24,7 @@ public interface RequestListener<T> {
 	 *
 	 * @param result result object of request execution
 	 */
+	@UiThread
 	void onSuccess(T result);
 
 	/**
@@ -28,14 +32,19 @@ public interface RequestListener<T> {
 	 *
 	 * @param e exception with cause of the fail
 	 */
-	void onFailed(RequestException e);
+	@UiThread
+	default void onFailed(RequestException e){
+
+	}
 
 	/**
 	 * this method will be invoked after request execution (regardless of the response result).
 	 */
+	@UiThread
 	default void onPostExecute() {
 	}
 
+	@UiThread
 	default void onCanceled() {
 	}
 }

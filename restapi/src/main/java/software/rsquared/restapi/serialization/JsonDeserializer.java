@@ -2,28 +2,23 @@ package software.rsquared.restapi.serialization;
 
 import android.support.annotation.CallSuper;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.text.TextUtils;
+import android.util.Log;
 
 import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 
 import java.io.IOException;
+import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
-import java.util.List;
-import java.util.Map;
-
-import software.rsquared.restapi.exceptions.DeserializationException;
 
 /**
  * Default implementation of response {@link Deserializer deserializer}
@@ -32,7 +27,7 @@ import software.rsquared.restapi.exceptions.DeserializationException;
  */
 public class JsonDeserializer implements Deserializer {
 
-	protected final ObjectMapper objectMapper = new ObjectMapper();
+	protected final ObjectMapper objectMapper;
 	protected final Config config;
 
 	public JsonDeserializer() {
@@ -41,11 +36,18 @@ public class JsonDeserializer implements Deserializer {
 
 	public JsonDeserializer(@NonNull Config config) {
 		this.config = config;
+		this.objectMapper = new ObjectMapper();
 		objectMapper.setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
 		SimpleModule module = new SimpleModule();
 		setupModule(module);
 		objectMapper.registerModule(module);
 	}
+
+	public JsonDeserializer(@NonNull ObjectMapper objectMapper) {
+		this.config = new Config();
+		this.objectMapper = objectMapper;
+	}
+
 
 	@CallSuper
 	protected void setupModule(SimpleModule module) {
@@ -124,77 +126,33 @@ public class JsonDeserializer implements Deserializer {
 	}
 
 	@Override
-	public <T> T read(Class<?> requestClass, String content) throws IOException {
-		Type superclass = requestClass.getGenericSuperclass();
-		while (!(superclass instanceof ParameterizedType) && requestClass.getSuperclass() != null) {
-			requestClass = requestClass.getSuperclass();
-			superclass = requestClass.getGenericSuperclass();
-		}
-		if (superclass != null && superclass instanceof ParameterizedType) {
-			return readObject(getParameterClasses((ParameterizedType) superclass).get(0), content);
-		} else {
-			throw new DeserializationException("Unknown parameter response class for " + requestClass.getSimpleName());
-		}
-
-	}
-
-	protected <T> T readObject(TypeDescription description, String content) throws IOException {
+	public <T> T deserialize(Class<?> requestClass, TypeReference<T> resultType, String content) throws IOException {
 		if (TextUtils.isEmpty(content)) {
-			content = getEmptyJson(description.type);
+			content = getEmptyJson(resultType.getType());
 		}
-
-		if (description.parameters != null) {
-			return objectMapper.readerFor(getJavaType(description)).readValue(content);
-		} else {
-			return objectMapper.readerFor(description.type).readValue(content);
-		}
+		return objectMapper.readerFor(resultType).readValue(content);
 	}
 
-	@Nullable
-	protected JavaType getJavaType(TypeDescription description) {
-		if (description.parameters != null) {
-			if (Collection.class.isAssignableFrom(description.type)) {
-				//noinspection unchecked
-				return objectMapper.getTypeFactory().constructCollectionType((Class<? extends Collection>) description.type, getJavaType(description.parameters.get(0)));
-			} else if (Map.class.isAssignableFrom(description.type)) {
-				//noinspection unchecked
-				return objectMapper.getTypeFactory().constructMapType((Class<? extends Map>) description.type, getJavaType(description.parameters.get(0)), getJavaType(description.parameters.get(1)));
-			} else {
-				JavaType[] types = new JavaType[description.parameters.size()];
-				for (int i = 0; i < description.parameters.size(); i++) {
-					types[i] = getJavaType(description.parameters.get(i));
-				}
-				return objectMapper.getTypeFactory().constructParametricType(description.type, types);
-			}
-		} else {
-			return objectMapper.getTypeFactory().constructSimpleType(description.type, null);
-		}
-	}
-
-	protected String getEmptyJson(@NonNull Object object) {
-		if (object instanceof Class && isArray((Class<?>) object)) {
+	protected String getEmptyJson(Type type) {
+		if (isArray(type)) {
 			return "[]";
 		} else {
 			return "{}";
 		}
 	}
 
-	protected boolean isArray(@NonNull Class<?> clazz) {
-		return Collection.class.isAssignableFrom(clazz) || clazz.isArray();
-	}
-
-	protected List<TypeDescription> getParameterClasses(@NonNull ParameterizedType type) {
-		List<TypeDescription> descriptions = new ArrayList<>();
-		Type[] arguments = type.getActualTypeArguments();
-		for (int i = 0; i < arguments.length; i++) {
-			Type subType = arguments[i];
-			if (subType instanceof Class) {
-				descriptions.add(new TypeDescription((Class<?>) subType));
-			} else if (subType instanceof ParameterizedType) {
-				descriptions.add(new TypeDescription(((Class<?>) ((ParameterizedType) subType).getRawType()), getParameterClasses((ParameterizedType) subType)));
-			}
+	protected boolean isArray(Type type) {
+		if (type.getClass() == Class.class) {
+			Class<?> aClass = (Class<?>) type;
+			return Collection.class.isAssignableFrom(aClass) || aClass.isArray();
 		}
-		return descriptions;
+		if (type instanceof GenericArrayType) {
+			return true;
+		}
+		if (type instanceof ParameterizedType) {
+			return isArray(((ParameterizedType) type).getRawType());
+		}
+		return false;
 	}
 
 	public static class Config {
@@ -206,20 +164,6 @@ public class JsonDeserializer implements Deserializer {
 		public Config setTimeInSeconds(boolean timeInSeconds) {
 			this.timeInSeconds = timeInSeconds;
 			return this;
-		}
-	}
-
-	protected class TypeDescription {
-		Class<?> type;
-		List<TypeDescription> parameters;
-
-		public TypeDescription(Class<?> type) {
-			this.type = type;
-		}
-
-		public TypeDescription(Class<?> type, List<TypeDescription> parameters) {
-			this.type = type;
-			this.parameters = parameters;
 		}
 	}
 }

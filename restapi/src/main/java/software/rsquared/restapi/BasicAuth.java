@@ -7,13 +7,13 @@ import okhttp3.Credentials;
  *
  * @author Rafal Zajfert
  */
-class BasicAuthorization {
+class BasicAuth {
 
 	private String user;
 
 	private String password;
 
-	BasicAuthorization(String user, String password) {
+	BasicAuth(String user, String password) {
 		this.user = user;
 		this.password = password;
 	}
@@ -21,7 +21,7 @@ class BasicAuthorization {
 	/**
 	 * Returns an auth credential for the Basic scheme.
 	 */
-	String getBasicAuthorization() {
+	String getCredentials() {
 		return Credentials.basic(user, password);
 	}
 

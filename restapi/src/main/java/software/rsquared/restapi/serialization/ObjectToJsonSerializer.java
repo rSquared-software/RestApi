@@ -32,7 +32,7 @@ import software.rsquared.restapi.exceptions.SerializationException;
  * @author Rafal Zajfert
  */
 public class ObjectToJsonSerializer implements JsonSerializer {
-	private final ObjectMapper objectMapper = new ObjectMapper();
+	private final ObjectMapper objectMapper;
 	private final Config config;
 
 	public ObjectToJsonSerializer() {
@@ -41,6 +41,7 @@ public class ObjectToJsonSerializer implements JsonSerializer {
 
 	public ObjectToJsonSerializer(@NonNull Config config) {
 		this.config = config;
+		this.objectMapper = new ObjectMapper();
 		objectMapper.setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
 		SimpleModule module = new SimpleModule();
 		setupModule(module);
@@ -53,6 +54,11 @@ public class ObjectToJsonSerializer implements JsonSerializer {
 		}
 	}
 
+	public ObjectToJsonSerializer(ObjectMapper objectMapper) {
+		this.config = new Config();
+		this.objectMapper = objectMapper;
+	}
+
 	private static boolean isEmpty(CharSequence text) {
 		return text == null || text.length() <= 0;
 	}
@@ -62,7 +68,7 @@ public class ObjectToJsonSerializer implements JsonSerializer {
 		module.addSerializer(File.class, new com.fasterxml.jackson.databind.JsonSerializer<File>() {
 			@Override
 			public void serialize(File value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
-				gen.writeString("_file{" + value.getAbsolutePath() + "}");
+				gen.writeString(Parameter.FILE_PREFIX + "{" + value.getAbsolutePath() + "}");
 			}
 		});
 
@@ -118,18 +124,7 @@ public class ObjectToJsonSerializer implements JsonSerializer {
 	}
 
 	@Override
-	public <T> void serialize(@NonNull List<Parameter> parameters, T object) {
-		if (object != null) {
-			String name = null;
-			if (isRestObject(object.getClass())) {
-				name = getObjectName(object);
-			}
-			serialize(parameters, name, object);
-		}
-	}
-
-	@Override
-	public <T> void serialize(@NonNull List<Parameter> parameters, @Nullable String name, T object) {
+	public void serialize(@NonNull List<Parameter> parameters, @NonNull String name, @Nullable Object object) {
 		if (object != null) {
 			JsonNode newNode = objectMapper.valueToTree(object);
 			if (parameters.isEmpty()) {
@@ -179,10 +174,6 @@ public class ObjectToJsonSerializer implements JsonSerializer {
 		} else {
 			return object.getClass().getSimpleName();
 		}
-	}
-
-	private boolean isRestObject(Class<?> aClass) {
-		return aClass.getAnnotation(RestObject.class) != null;
 	}
 
 	public static class Config {

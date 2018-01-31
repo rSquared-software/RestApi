@@ -1,17 +1,21 @@
 package software.rsquared.restapi;
 
 import android.net.Uri;
+import android.support.annotation.AnyThread;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.WorkerThread;
 import android.text.TextUtils;
+import android.util.Log;
+import android.util.Pair;
+
+import com.fasterxml.jackson.core.type.TypeReference;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -21,9 +25,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import okhttp3.Call;
-import okhttp3.CertificatePinner;
 import okhttp3.ConnectionPool;
-import okhttp3.ConnectionSpec;
 import okhttp3.FormBody;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
@@ -33,17 +35,12 @@ import okhttp3.OkHttpClient;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
-import software.rsquared.restapi.exceptions.InitialRequirementsException;
-import software.rsquared.restapi.exceptions.RefreshTokenException;
 import software.rsquared.restapi.exceptions.RequestException;
-import software.rsquared.restapi.exceptions.UserServiceNotInitialized;
 import software.rsquared.restapi.listeners.RequestListener;
 import software.rsquared.restapi.serialization.Deserializer;
 import software.rsquared.restapi.serialization.ErrorDeserializer;
 import software.rsquared.restapi.serialization.JsonSerializer;
 import software.rsquared.restapi.serialization.Serializer;
-
-import static software.rsquared.restapi.RestApiUtils.enableTls12OnPreLollipop;
 
 /**
  * Base implementation of the Request methods
@@ -58,27 +55,18 @@ public abstract class Request<T> {
 	public static final MediaType APPLICATION_JSON = MediaType.parse("application/json");
 
 	protected static final String CONTENT_TYPE = "Content-Type";
-	protected static final String KEY_BASIC_AUTHORIZATION = "BasicAuthorization";
-
-	private static final Executor DEFAULT_UI_EXECUTOR = new MainThreadExecutor();
-
-	@Nullable
-	private OkHttpClient httpClient;
-
-	@Nullable
-	private Executor ioExecutor;
-
-	@NonNull
-	private Executor uiExecutor = DEFAULT_UI_EXECUTOR;
+	protected static final String KEY_BASIC_AUTHORIZATION = "BasicAuth";
 
 	@NonNull
 	private final HttpUrl.Builder urlBuilder = new HttpUrl.Builder();
 
-	@NonNull
-	private final Map<String, Object> bodyParameters = new LinkedHashMap<>();
+	@Nullable
+	private HttpUrl url;
 
 	@NonNull
-	private final Map<String, Object> queryParameters = new LinkedHashMap<>();
+	private final List<Parameter> bodyParameters = new ArrayList<>();
+	@NonNull
+	private final List<Parameter> queryParameters = new ArrayList<>();
 
 	@NonNull
 	private final Map<String, String> headerMap = new HashMap<>();
@@ -94,11 +82,21 @@ public abstract class Request<T> {
 	@Nullable
 	private final String logCreateCodeLine;
 
-	private RequestTask task;
-
 	private AtomicBoolean executed = new AtomicBoolean(false);
 
 	private T result;
+
+	private RestApi api;
+
+	@Nullable
+	private RequestTask<T> task;
+
+	@Nullable
+	private Call requestCall;
+
+
+	private AtomicBoolean cancelled = new AtomicBoolean(false);
+	private OkHttpClient httpClient;
 
 	/**
 	 * Initial constructor for request.
@@ -107,55 +105,119 @@ public abstract class Request<T> {
 		logCreateCodeLine = RestApiUtils.getClassCodeLine(getClass().getName());
 	}
 
+	@AnyThread
 	protected void execute(RestApi api, RequestListener<T> listener) {
+		RequestTask<T> task = beforeExecution(api, listener);
+		executeTask(api, task);
+	}
+
+	@WorkerThread
+	protected T executeSync(RestApi api) throws RequestException {
+		RequestTask<T> task = beforeExecution(api, null);
+		executeTaskSync(task);
+		return result;
+	}
+
+	protected RequestTask<T> beforeExecution(RestApi api, RequestListener<T> listener) {
 		if (executed.compareAndSet(false, true)) {
-			task = createTask(api, listener);
-			executeTask(api, listener);
+			this.api = api;
+			return createTask(listener);
 		} else {
 			throw new IllegalStateException("Request currently executed!");
 		}
 	}
 
-	private void executeTask(RestApi api, RequestListener<T> listener) {
-		Executor uiExecutor = api.getUiExecutor();
-		if (uiExecutor != null) {
-			this.uiExecutor = uiExecutor;
+	@WorkerThread
+	private void executeTaskSync(RequestTask<T> task) throws RequestException {
+		task.onPreExecute();
+		try {
+			task.onSuccess(task.execute());
+		} catch (RequestException e) {
+			task.onFailed(e);
+			throw e;
 		}
+		task.onPostExecute();
+	}
 
-		ioExecutor = api.getIOExecutor();
-		if (ioExecutor != null) {
-			ioExecutor.execute(task);
+	@AnyThread
+	private void executeTask(RestApi api, RequestTask<T> task) {
+		if (api.getNetworkExecutor() != null) {
+			api.getNetworkExecutor().execute(task);
 		} else {
-			throw new IllegalStateException("RestApi required to specify IOExecutor!");
+			throw new IllegalStateException("NetworkExecutor is required!");
 		}
 	}
 
 	public void cancel() {
-		if (task != null) {
-			task.cancel();
+		if (cancelled.compareAndSet(false, true)) {
+			if (task != null) {
+				task.onCancelled();
+			}
+			if (requestCall != null) {
+				requestCall.cancel();
+			}
+		} else {
+			getLogger().debug(logCreateCodeLine, "Already cancelled");
 		}
 	}
 
 	/**
 	 * Creates new instance of the task that have to be executed
 	 *
-	 * @param api
 	 * @param listener
 	 * @return callable instance of the request task
 	 */
 	@NonNull
-	protected RequestTask createTask(RestApi api, RequestListener<T> listener) {
-		return new RequestTask() {
+	protected RequestTask<T> createTask(@Nullable RequestListener<T> listener) {
+		return new RequestTask<T>(listener) {
 			@Override
-			protected void execute() throws RequestException {
+			protected void onPreExecute() {
+				Executor uiExecutor = api.getUiExecutor();
+				if (listener != null) {
+					uiExecutor.execute(listener::onPreExecute);
+				}
+			}
+
+			@Override
+			protected T execute() throws RequestException {
 				timer.start();
-				result = executeRequest(api);
+				result = executeRequest();
 				waitForMinExecutionTime();
 				getLogger().debug(logCreateCodeLine, String.format(Locale.getDefault(), "Execution of " + getClassName() + " took: %.3fms", timer.getElapsedTime()));
+				return result;
+			}
+
+			@Override
+			protected void onSuccess(T result) {
+				Executor uiExecutor = api.getUiExecutor();
+				if (listener != null) {
+					uiExecutor.execute(() -> listener.onSuccess(result));
+				}
 			}
 
 			@Override
 			protected void onFailed(RequestException e) {
+				Executor uiExecutor = api.getUiExecutor();
+				if (listener != null) {
+					uiExecutor.execute(() -> listener.onFailed(e));
+				}
+			}
+
+			@Override
+			protected void onPostExecute() {
+				Executor uiExecutor = api.getUiExecutor();
+				if (listener != null) {
+					uiExecutor.execute(listener::onPostExecute);
+				}
+			}
+
+
+			@Override
+			protected void onCancelled() {
+				Executor uiExecutor = api.getUiExecutor();
+				if (listener != null) {
+					uiExecutor.execute(listener::onCanceled);
+				}
 			}
 		};
 	}
@@ -163,23 +225,36 @@ public abstract class Request<T> {
 	/**
 	 * This method invokes task to do by this request and return specified.
 	 *
-	 * @param api
 	 * @return requested object
 	 */
-	protected T executeRequest(RestApi api) throws RequestException {
-		computeCheckers(api);
-		T mock = getMockResponse(api.getMockFactory());
-		if (mock != null) {
+	protected T executeRequest() throws RequestException {
+		computeCheckers();
+		result = getMockResponse(api.getMockFactory());
+		if (result != null) {
 			getLogger().debug(logCreateCodeLine, "Mocked response");
-			return mock;
+		} else {
+			setUrl();
+			HeaderFactory headerFactory = api.getHeaderFactory();
+			if (headerFactory != null) {
+				headerMap.putAll(headerFactory.getHeaders(this));
+			}
+			prepareRequest();
+			computeAuthenticator(api.getRequestAuthenticator());
+			buildUrl();
+			if (!cancelled.get()) {
+				httpClient = createHttpClient();
+				requestCall = createRequest(httpClient, url, headerMap, getRequestBody());
+
+				getLogger().debug(logCreateCodeLine, "Start execution " + getClassName() + ":\n" + url + "\n" + logParameters);
+				if (!cancelled.get()) {
+					try (Response response = requestCall.execute()) {
+						result = readResponse(response);
+					} catch (IOException e) {
+						throw new RequestException(e);
+					}
+				}
+			}
 		}
-		initUrl(api);
-		prepareRequest();
-		Call request = createRequest(urlBuilder.build());
-		getLogger().debug(logCreateCodeLine, "Start execution " + getClassName() + ":\n" + logParameters);
-		Response response = request.execute();
-		T result = readResponse(response);
-		response.close();
 		return result;
 	}
 
@@ -188,13 +263,38 @@ public abstract class Request<T> {
 	 *
 	 * @throws RequestException exception with cause of fail
 	 */
-	protected void computeCheckers(RestApi api) throws RequestException {
-		List<Checker> checkers = api.getCheckers();
-		if (checkers != null) {
-			for (Checker checker : checkers) {
-				checker.check(this);
+	protected void computeCheckers() throws RequestException {
+		List<Checker> checkers = api.getCheckerList();
+		for (Checker checker : checkers) {
+			checker.check(this);
+		}
+	}
+
+	protected void computeAuthenticator(RequestAuthenticator authenticator) {
+		if (!isAuthorizable() || authenticator == null) {
+			return;
+		}
+		for (Pair<String, Object> pair : authenticator.getQueryParameters()) {
+			if (pair.first == null) {
+				putQueryParameter(pair.second);
+			} else {
+				putQueryParameter(pair.first, pair.second);
 			}
 		}
+		for (Pair<String, Object> pair : authenticator.getParameters()) {
+			if (pair.first == null) {
+				putParameter(pair.second);
+			} else {
+				putParameter(pair.first, pair.second);
+			}
+		}
+		for (Pair<String, String> pair : authenticator.getHeaders()) {
+			addHeader(pair.first, pair.second);
+		}
+	}
+
+	protected boolean isAuthorizable() {
+		return this instanceof Authorizable;
 	}
 
 	/**
@@ -204,25 +304,35 @@ public abstract class Request<T> {
 		return mockFactory == null ? null : mockFactory.getMockResponse(this);
 	}
 
-	private void initUrl(RestApi api) {
-		String baseUrl = api.getBaseUrl();
-		Uri uri = Uri.parse(baseUrl);
-		urlBuilder.scheme(uri.getScheme());
-		urlBuilder.host(uri.getHost());
-		urlBuilder.port(uri.getPort());
+	private void setUrl() {
+		setUrl(api.getUrl());
+		BasicAuth basicAuth = api.getBasicAuth();
+		if (basicAuth != null) {
+			setBasicAuthorization(basicAuth.getUser(), basicAuth.getPassword());
+		}
+	}
 
-		BasicAuthorization basicAuthorization = api.getBasicAuthorization();
-		if (basicAuthorization != null) {
-			urlBuilder.username(basicAuthorization.getUser());
-			urlBuilder.password(basicAuthorization.getPassword());
-		} else {
-			String userInfo = uri.getUserInfo();
-			if (!TextUtils.isEmpty(userInfo)) {
-				String[] parts = userInfo.split(":", 2);
-				urlBuilder.username(parts[0]);
-				if (parts.length > 1) {
-					urlBuilder.password(parts[1]);
-				}
+	protected void buildUrl() {
+		for (Parameter param : queryParameters) {
+			urlBuilder.addQueryParameter(param.getName(), String.valueOf(param.getValue()));
+		}
+		this.url = urlBuilder.build();
+	}
+
+	/**
+	 * Set api method url.
+	 */
+	protected void setUrl(@NonNull String url) {
+		Uri uri = Uri.parse(url);
+		setScheme(uri.getScheme());
+		setHost(uri.getHost());
+		setPort(uri.getPort());
+
+		String userInfo = uri.getUserInfo();
+		if (!TextUtils.isEmpty(userInfo)) {
+			String[] parts = userInfo.split(":", 2);
+			if (parts.length > 1) {
+				setBasicAuthorization(parts[0], parts[1]);
 			}
 		}
 
@@ -243,317 +353,105 @@ public abstract class Request<T> {
 
 		String fragment = uri.getFragment();
 		if (!TextUtils.isEmpty(fragment)) {
-			urlBuilder.fragment(fragment);
+			setFragment(fragment);
 		}
 	}
 
-	/**
-	 * Prepare all request properties
-	 *
-	 * @see #setUrl(String)
-	 * @see #setUrlSegments(String...)
-	 * @see #putParameter(String, Object)
-	 * @see #putQueryParameter(String, Object)
-	 */
-	protected abstract void prepareRequest();
-
-	/**
-	 * Method that execute this request and returns response from the server. Response must be closed
-	 *
-	 * @see Response
-	 */
-	@WorkerThread
-	protected abstract Call createRequest(HttpUrl url) throws RequestException;
-
-	/**
-	 * Returns complete api url. If additional parameters should be added than it must be done before this call
-	 *
-	 * @see #putUrlParameter(String, Object)
-	 */
-	protected HttpUrl getUrl() {
-		if (urlSegments == null && TextUtils.isEmpty(this.url)) {
-			throw new IllegalStateException("Set url in " + this.getClass().getSimpleName() + " prepareRequest method");
-		}
-		HttpUrl url;
-		if (!TextUtils.isEmpty(this.url)) {
-			if (needAuthorization() && userService != null && userService.getAuthorization() != null) {
-				String accessToken = ACCESS_TOKEN + "=" + userService.getAuthorization().getAccessToken();
-				if (!this.url.contains(accessToken)) {
-					int questionMarkPosition = this.url.indexOf('?');
-					char paramSeparator = questionMarkPosition >= 0 ? '&' : '?';
-					this.url += paramSeparator + accessToken;
-				}
-			}
-			url = HttpUrl.parse(this.url);
-
-		} else {
-
-
-			RestApiConfiguration configuration = getConfiguration();
-			HttpUrl.Builder builder = new HttpUrl.Builder();
-			builder.scheme(configuration.getScheme());
-			if (configuration.getPort() >= 0) {
-				builder.port(configuration.getPort());
-			}
-			builder.host(configuration.getHost());
-
-			BasicAuthorization basicAuthorization = configuration.getBasicAuthorization();
-			if (basicAuthorization != null) {
-				builder.username(basicAuthorization.getUser())
-						.password(basicAuthorization.getPassword());
-			}
-			for (String segment : urlSegments) {
-				builder.addPathSegment(segment);
-			}
-			for (Parameter param : queryParameters) {
-				builder.addQueryParameter(param.getName(), String.valueOf(param.getValue()));
-			}
-
-			if (needAuthorization() && userService != null && userService.getAuthorization() != null) {
-				builder.addQueryParameter(ACCESS_TOKEN, userService.getAuthorization().getAccessToken());
-			}
-			url = builder.build();
-		}
-		return url;
+	protected void setScheme(String scheme) {
+		urlBuilder.scheme(scheme);
 	}
 
-	private void waitForMinExecutionTime() {
-		double time = timer.getElapsedTime();
-		if (time < minExecutionTime) {
-			try {
-				Thread.sleep((long) (minExecutionTime - time));
-			} catch (InterruptedException ignored) {
-			}
+	protected void setBasicAuthorization(String username, String password) {
+		urlBuilder.username(username);
+		urlBuilder.password(password);
+	}
+
+	protected void setHost(String host) {
+		urlBuilder.host(host);
+	}
+
+	protected void setPort(int port) {
+		if (port > 0) {
+			urlBuilder.port(port);
 		}
 	}
 
-	@NonNull
-	protected OkHttpClient.Builder createHttpClient(RestApiConfiguration configuration) {
-		int timeout = configuration.getTimeout();
-		OkHttpClient.Builder clientBuilder = new OkHttpClient.Builder()
-				.connectionPool(new ConnectionPool(1, timeout, TimeUnit.MILLISECONDS))
-				.followSslRedirects(true)
-				.connectTimeout(timeout, TimeUnit.MILLISECONDS)
-				.readTimeout(timeout, TimeUnit.MILLISECONDS);
-		ConnectionSpec connectionSpec = configuration.getConnectionSpec();
-		if (connectionSpec != null) {
-			clientBuilder.connectionSpecs(Collections.singletonList(connectionSpec));
-		}
-
-		CertificatePinner certificatePinner = configuration.getCertificatePinner();
-		if (certificatePinner != null) {
-			clientBuilder.certificatePinner(certificatePinner);
-		}
-
-		final BasicAuthorization basicAuthorization = configuration.getBasicAuthorization();
-		if (basicAuthorization != null) {
-			clientBuilder.authenticator((route, response) -> {
-				okhttp3.Request.Builder requestBuilder = response.request()
-						.newBuilder()
-						.header("Authorization", basicAuthorization.getBasicAuthorization());
-				return requestBuilder.build();
-			});
-		}
-		if (configuration.isEnableTls12OnPreLollipop()) {
-			return enableTls12OnPreLollipop(clientBuilder);
-		}
-		return clientBuilder;
-	}
-
-
-	@NonNull
-	protected String getClassName() {
-		String name = this.getClass().getName();
-		String[] parts = name.split("\\.");
-		if (parts.length > 0 && !TextUtils.isEmpty(parts[parts.length - 1])) {
-			String classPart = parts[parts.length - 1];
-			parts = classPart.split("\\$");
-			return parts.length > 0 && !TextUtils.isEmpty(parts[parts.length - 1]) ? parts[parts.length - 1] : classPart;
-		} else {
-			return "Request";
-		}
-	}
-
-
-	/**
-	 * This method will be executed only if {@link #needAuthorization()} method returns true.
-	 * Method checks if user is logged in and access token is valid (if not then try to refresh it).
-	 * If Refresh token failed then user will be automatically logged out.
-	 */
-	@WorkerThread
-	protected void checkAccessToken() {
-		if (!needAuthorization()) {
-			return;
-		}
-		if (userService == null) {
-			throw new UserServiceNotInitialized("Request is not properly configured to use UserService. Use method RestApi.Config.setRestAuthorizationService(RestAuthorizationService) to provide user service implementation");
-		}
-
-		if (!userService.isLogged()) {
-			if (!userService.onNotLogged(this)) {
-				cancel();
-				return;
-			}
-		}
-
-		LOCK.waitIfLocked();
-		if (userService.isTokenValid()) {
-			return;
-		}
-		LOCK.lock();
-		try {
-			userService.refreshToken();
-		} catch (Exception e) {
-			if (!userService.onRefreshTokenFailed(new RefreshTokenException("Problem during obtaining refresh token", e))) {
-				cancel();
-				//noinspection UnnecessaryReturnStatement
-				return;
-			}
-		} finally {
-			LOCK.unlock();
-		}
-	}
-
-	protected void ignoreErrorCallback() {
-		ignoreErrorCallback = true;
-	}
-
-	protected boolean isErrorCallbackIgnored() {
-		return ignoreErrorCallback;
-	}
-
-	protected void disableLogging() {
-		disableLogging = true;
-	}
-
-	protected boolean isLoggingDisabled() {
-		return disableLogging;
-	}
-
-	/**
-	 * Mark that this request need authorization via {@link #ACCESS_TOKEN}
-	 */
-	protected void setIsAuthorizedRequest() {
-		setIsAuthorizedRequest(true);
-
-	}
-
-	/**
-	 * Mark that this request need (or not) authorization via {@link #ACCESS_TOKEN}
-	 */
-	public void setIsAuthorizedRequest(boolean authorizedRequest) {
-		this.authorizedRequest = authorizedRequest;
-	}
-
-	/**
-	 * Checks if in this request need to add {@link #ACCESS_TOKEN} to the url
-	 *
-	 * @return true if {@link #setIsAuthorizedRequest()} was called or {@link Request} implements {@link Authorizable} interface
-	 */
-	protected boolean needAuthorization() {
-		return authorizedRequest || this instanceof Authorizable;
-	}
-
-	/**
-	 * Reads response and parse to object or throws exception if execution failed
-	 */
-	protected T readResponse(Response response) throws IOException, RequestException {
-		if (response == null) {
-			return null;
-		}
-		int status = response.code();
-		ResponseBody body = response.body();
-		String content = null;
-		if (body != null) {
-			content = body.string();
-		}
-		if (!disableLogging) {
-			getLogger().verbose(requestCodeLine.toString(), "Response from " + getClassName() + " (" + requestUrl + "):\n" + content);
-		}
-		if (isSuccess(response)) {
-			T result = readResult(content);
-			readHeaders(response.headers(), result);
-			return result;
-		} else {
-			throw getErrorDeserializer().read(status, content);
-		}
-	}
-
-	protected T readResult(String content) throws IOException {
-		Class<? extends Request> aClass = getClass();
-		return getDeserializer().read(aClass, content);
-	}
-
-	protected void readHeaders(Headers headers, T result) {
-	}
-
-	/**
-	 * Checks if response is success. By default checks if response code is 200
-	 */
-	protected boolean isSuccess(Response response) {
-		return getConfiguration().getSuccessStatusCodes().contains(response.code());
-	}
-
-	/**
-	 * Set api method url. If url will be sets by this method then all calls {@link #setUrlSegments(String...) setUrlSegments}, {@link #putParameter(String, Object) putParameter} or {@link #putUrlParameter(String, Object) putUrlParameter} will be ignored
-	 */
-	protected void setUrl(String url) {
-		this.url = url;
-	}
-
-	/**
-	 * Set minimal execution time of this request. Execution of this request will take at least <code>millis</code> milliseconds
-	 */
-	protected void setMinExecutionTime(long millis) {
-		this.minExecutionTime = millis;
+	protected void setFragment(String fragment) {
+		urlBuilder.fragment(fragment);
 	}
 
 	/**
 	 * Set api method url based on {@link RestApiConfiguration}
 	 *
-	 * @param urlSegments path segments e.g: <p>
-	 *                    for address http://example.com/get/user  this method should be invoked: {@code setUrlSegments("get", "user");}
+	 * @param segments path segments e.g: <p>
+	 *                 for address http://example.com/get/user  this method should be invoked: {@code addPathSegments("get", "user");}
 	 */
-	protected void setUrlSegments(String... urlSegments) {
-		this.urlSegments = urlSegments;
+	protected void addPathSegments(String... segments) {
+		if (segments != null) {
+			for (String segment : segments) {
+				this.urlBuilder.addPathSegment(segment);
+			}
+		}
 	}
 
 	/**
 	 * Adds parameter to URL's query string.
 	 */
-	protected void putUrlParameter(@NonNull String name, @Nullable Object value) {
+	protected void putQueryParameter(@NonNull String name, @Nullable Object value) {
 		getSerializer().serialize(queryParameters, name, value);
 	}
 
 	/**
 	 * Adds parameter to URL's query string.
 	 */
-	protected void putUrlParameter(@Nullable Object value) {
-		getSerializer().serialize(queryParameters, value);
+	protected void putQueryParameter(@Nullable Object value) {
+		String name = getNameFor(value);
+		if (TextUtils.isEmpty(name)) {
+			throw new RuntimeException("Unknown name!");
+		}
+		getSerializer().serialize(queryParameters, name, value);
 	}
 
 	/**
 	 * Adds parameter to request body
 	 */
-	protected void putParameter(@NonNull String name, @Nullable Object value) {
+	void putParameter(@NonNull String name, @Nullable Object value) {
 		getSerializer().serialize(bodyParameters, name, value);
 	}
 
 	/**
 	 * Adds parameter to request body
 	 */
-	protected void putParameter(@Nullable Object value) {
-		getSerializer().serialize(bodyParameters, value);
+	void putParameter(@Nullable Object value) {
+		String name = getNameFor(value);
+		if (TextUtils.isEmpty(name)) {
+			throw new RuntimeException("Unknown name!");
+		}
+		getSerializer().serialize(bodyParameters, name, value);
+	}
+
+	protected String getNameFor(Object object) {
+		if (isRestObject(object)) {
+			return getRestObjectName(object);
+		}
+		return null;
+	}
+
+	private boolean isRestObject(Object object) {
+		return object != null && object.getClass().getAnnotation(RestObject.class) != null;
+	}
+
+	private String getRestObjectName(Object object) {
+		RestObject restObject = object.getClass().getAnnotation(RestObject.class);
+		if (!TextUtils.isEmpty(restObject.value())) {
+			return restObject.value();
+		} else {
+			return object.getClass().getSimpleName();
+		}
 	}
 
 	protected void addHeader(@NonNull String name, @NonNull String value) {
 		headerMap.put(name, value);
-	}
-
-	protected Map<String, String> getHeaders() {
-		Map<String, String> headers = new HashMap<>(headerMap);
-		headers.putAll(getConfiguration().getHeaders());
-		return headers;
 	}
 
 	/**
@@ -573,7 +471,7 @@ public abstract class Request<T> {
 	/**
 	 * Removes parameter from URL's query string.
 	 */
-	protected void removeUrlParameter(@NonNull String key) {
+	protected void removeQueryParameter(@NonNull String key) {
 		Iterator<Parameter> iterator = queryParameters.iterator();
 		while (iterator.hasNext()) {
 			Parameter parameter = iterator.next();
@@ -603,6 +501,16 @@ public abstract class Request<T> {
 		}
 	}
 
+	protected MediaType getMediaType() {
+		if (isMultipartRequest()) {
+			return MULTIPART_FORM_DATA;
+		} else if (getSerializer() instanceof JsonSerializer) {
+			return APPLICATION_JSON;
+		} else {
+			return APPLICATION_URLENCODED;
+		}
+	}
+
 	/**
 	 * Checks if at least one of the parameters is a file
 	 */
@@ -616,19 +524,18 @@ public abstract class Request<T> {
 	}
 
 	@NonNull
-	private RequestBody getMultipartBody() {
+	protected RequestBody getMultipartBody() {
 		MultipartBody.Builder bodyBuilder = new MultipartBody.Builder();
 		bodyBuilder.setType(MULTIPART_FORM_DATA);
 
+		StringBuilder parametersStringBuilder = new StringBuilder();
 		Iterator<Parameter> iterator = bodyParameters.iterator();
 		while (iterator.hasNext()) {
 			Parameter parameter = iterator.next();
 			if (parameter.isFile()) {
 				String name = parameter.getName();
 				String path = parameter.getFilePath();
-				if (!disableLogging) {
-					requestLog.append("\n").append(name).append(": ").append(path);
-				}
+				appendParameterWithNewLine(parametersStringBuilder, name, path);
 				File file = new File(path);
 				if (file.exists()) {
 					bodyBuilder.addFormDataPart(name, file.getName(), RequestBody.create(MediaType.parse("image/" + getFileExtension(file)), file));
@@ -639,13 +546,12 @@ public abstract class Request<T> {
 		for (Parameter parameter : bodyParameters) {
 			String name = parameter.getName();
 			String value = String.valueOf(parameter.getValue());
-			if (!disableLogging) {
-				requestLog.append("\n").append(name).append(": ").append(value);
-			}
+			appendParameterWithNewLine(parametersStringBuilder, name, value);
 			if (!TextUtils.isEmpty(value)) {
 				bodyBuilder.addFormDataPart(name, value);
 			}
 		}
+		logParameters = parametersStringBuilder.toString();
 		return bodyBuilder.build();
 	}
 
@@ -659,55 +565,170 @@ public abstract class Request<T> {
 	}
 
 	@NonNull
-	private RequestBody getFormBody() {
+	protected RequestBody getFormBody() {
 		FormBody.Builder bodyBuilder = new FormBody.Builder();
+		StringBuilder parametersStringBuilder = new StringBuilder();
 		for (Parameter parameter : bodyParameters) {
 			String name = parameter.getName();
 			String value = String.valueOf(parameter.getValue());
-			if (!disableLogging) {
-				requestLog.append("\n").append(name).append(": ").append(value);
-			}
+			appendParameterWithNewLine(parametersStringBuilder, name, value);
 			if (!TextUtils.isEmpty(value)) {
 				bodyBuilder.add(name, value);
 			}
 		}
+		logParameters = parametersStringBuilder.toString();
 		return bodyBuilder.build();
 	}
 
-	private RequestBody getJsonBody() {
+	protected RequestBody getJsonBody() {
 		if (getSerializer() instanceof JsonSerializer) {
 			String body = ((JsonSerializer) getSerializer()).toJsonString(bodyParameters);
-			if (!disableLogging) {
-				requestLog.append("\n").append(body);
-			}
+			logParameters = body;
 			return RequestBody.create(APPLICATION_JSON, body);
 		} else {
 			throw new IllegalStateException("Json media type requires JsonSerializer. Set JsonSerializer via RestApi.Config().setSerializer()");
 		}
 	}
 
-	protected MediaType getMediaType() {
-		return isMultipartRequest() ? MULTIPART_FORM_DATA : mediaType;
+	private void appendParameterWithNewLine(StringBuilder parametersStringBuilder, String name, String value) {
+		if (parametersStringBuilder.length() > 0) {
+			parametersStringBuilder.append("\n");
+		}
+		parametersStringBuilder.append(name).append(": ").append(value);
+	}
+
+	/**
+	 * Prepare all request properties
+	 *
+	 * @see #setUrl(String)
+	 * @see #addPathSegments(String...)
+	 * @see #putParameter(String, Object)
+	 * @see #putQueryParameter(String, Object)
+	 */
+	protected abstract void prepareRequest();
+
+	/**
+	 * Method that execute this request and returns response from the server. Response must be closed
+	 *
+	 * @see Response
+	 */
+	@NonNull
+	@WorkerThread
+	protected abstract Call createRequest(OkHttpClient client, HttpUrl url, Map<String, String> headers, RequestBody requestBody) throws RequestException;
+
+	protected void waitForMinExecutionTime() {
+		double time = timer.getElapsedTime();
+		if (time < minExecutionTime) {
+			try {
+				Thread.sleep((long) (minExecutionTime - time));
+			} catch (InterruptedException ignored) {
+			}
+		}
+	}
+
+	@NonNull
+	protected OkHttpClient createHttpClient() {
+		long timeout = api.getTimeout();
+		OkHttpClient.Builder clientBuilder = new OkHttpClient.Builder()
+				.connectionPool(new ConnectionPool(1, timeout, TimeUnit.MILLISECONDS))
+				.followSslRedirects(true)
+				.connectTimeout(timeout, TimeUnit.MILLISECONDS)
+				.readTimeout(timeout, TimeUnit.MILLISECONDS);
+
+		final BasicAuth basicAuth = api.getBasicAuth();
+		if (basicAuth != null) {
+			clientBuilder.authenticator((route, response) -> {
+				okhttp3.Request.Builder requestBuilder = response.request()
+						.newBuilder()
+						.header("Authorization", basicAuth.getCredentials());
+				return requestBuilder.build();
+			});
+		}
+		if (api.isEnableTls12OnPreLollipop()) {
+			return RestApiUtils.enableTls12OnPreLollipop(clientBuilder).build();
+		} else {
+			return clientBuilder.build();
+		}
+	}
+
+	@NonNull
+	protected String getClassName() {
+		String name = this.getClass().getName();
+		String[] parts = name.split("\\.");
+		if (parts.length > 0 && !TextUtils.isEmpty(parts[parts.length - 1])) {
+			String classPart = parts[parts.length - 1];
+			parts = classPart.split("\\$");
+			return parts.length > 0 && !TextUtils.isEmpty(parts[parts.length - 1]) ? parts[parts.length - 1] : classPart;
+		} else {
+			return "Request";
+		}
+	}
+
+	/**
+	 * Reads response and parse to object or throws exception if execution failed
+	 */
+	protected T readResponse(Response response) throws RequestException, IOException {
+		if (response == null) {
+			return null;
+		}
+		int status = response.code();
+		ResponseBody body = response.body();
+		String content = null;
+		if (body != null) {
+			content = body.string();
+		}
+		getLogger().verbose(logCreateCodeLine, "Response from " + getClassName() + " (" + url + "):\n" + content);
+		if (isSuccess(response)) {
+			T result = readResult(content);
+			readHeaders(response.headers(), result);
+			return result;
+		} else {
+			throw getErrorDeserializer().deserialize(status, content);
+		}
+	}
+
+	protected T readResult(String content) throws IOException {
+		return getDeserializer().deserialize(getClass(), getResultType(), content);
+	}
+
+	/**
+	 * Returns result type
+	 */
+	protected TypeReference<T> getResultType() {
+		return new RequestTypeReference<>(this);
+	}
+
+	protected void readHeaders(Headers headers, T result) {
+	}
+
+	/**
+	 * Checks if response is success. By default checks if response code is 200
+	 */
+	protected boolean isSuccess(Response response) {
+		return api.getSuccessStatusCodes().contains(response.code());
+	}
+
+
+	/**
+	 * Set minimal execution time of this request. Execution of this request will take at least <code>millis</code> milliseconds
+	 */
+	protected void setMinExecutionTime(long millis) {
+		this.minExecutionTime = millis;
 	}
 
 	protected Serializer getSerializer() {
-		return getConfiguration().getSerializer();
+		return api.getSerializer();
 	}
 
 	protected Deserializer getDeserializer() {
-		return getConfiguration().getDeserializer();
+		return api.getDeserializer();
 	}
 
 	protected ErrorDeserializer getErrorDeserializer() {
-		return getConfiguration().getErrorDeserializer();
+		return api.getErrorDeserializer();
 	}
 
 	protected RestApiLogger getLogger() {
-		return getConfiguration().getLogger();
+		return api.getLogger();
 	}
-
-	protected RestApiConfiguration getConfiguration() {
-		return RestApi.getConfiguration();
-	}
-
 }

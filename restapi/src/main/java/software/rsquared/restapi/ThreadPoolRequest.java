@@ -1,5 +1,7 @@
 package software.rsquared.restapi;
 
+import android.support.annotation.AnyThread;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -10,30 +12,32 @@ import software.rsquared.restapi.exceptions.RequestException;
  *
  * @author Rafal Zajfert
  */
-class ThreadPoolRequest extends PoolRequest<ThreadPoolRequest> {
+class ThreadPoolRequest extends PoolRequest {
 
 	private Map<Integer, Object> results = new LinkedHashMap<>();
 
-	public ThreadPoolRequest(int poolSize) {
-		super(poolSize);
+	ThreadPoolRequest() {
 	}
 
+	@AnyThread
 	public void execute() {
-		if (executed) {
-			throw new IllegalStateException("Already executed.");
-		}
-		executed = true;
-
 		ThreadPoolRequest.this.onPreExecute();
+
 		for (Map.Entry<Integer, Request> entry : requestPool.entrySet()) {
+			Integer requestCode = entry.getKey();
+			Request request = entry.getValue();
+			ThreadPoolRequest.this.onPreExecute();
+
 			//noinspection unchecked
-			executor.submit(entry.getValue().createTask(api, listener), entry.getValue().isErrorCallbackIgnored() ? null : RestApi.getConfiguration().getErrorCallback(), new PoolRequestListener(entry.getKey()) {
+			request.execute(api, new PoolRequestListener(requestCode) {
+
 				@Override
 				public void onSuccess(Object result) {
 					int requestCode = getRequestCode();
 					ThreadPoolRequest.this.onTaskSuccess(result, requestCode);
 					results.put(requestCode, result);
 					checkFinished(false);
+
 				}
 
 				@Override
@@ -50,28 +54,26 @@ class ThreadPoolRequest extends PoolRequest<ThreadPoolRequest> {
 
 				@Override
 				public void onCanceled() {
-					cancelled = true;
-				}
-
-				private void checkFinished(boolean forceFinish) {
-					if (cancelled) {
-						stopExecute();
-						ThreadPoolRequest.this.onCanceled();
-					} else {
-						boolean allFinished = results.size() == requestPool.size();
-						if (allFinished || forceFinish) {
-							stopExecute();
-							if (allFinished) {
-								ThreadPoolRequest.this.onSuccess(results);
-							}
-							ThreadPoolRequest.this.onPostExecute();
-						}
-
+					if (!cancelled.get()) {
+						cancel();
 					}
 				}
+
 			});
 		}
-		executor.shutdown();
+	}
+
+	private void checkFinished(boolean forceCancel) {
+		if (!cancelled.get()) {
+			boolean allFinished = results.size() == requestPool.size();
+			if (allFinished) {
+				onSuccess(results);
+				onPostExecute();
+			} else if (forceCancel) {
+				cancel();
+				onPostExecute();
+			}
+		}
 	}
 
 }

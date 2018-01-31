@@ -48,7 +48,7 @@ final class RestApiLoggerFactory {
 		private final Method debug;
 		private final Method info;
 
-		public R2LoggerTagged(@NonNull Method createTag, Method verbose, Method debug, Method info) {
+		R2LoggerTagged(@NonNull Method createTag, Method verbose, Method debug, Method info) {
 			this.createTag = createTag;
 			this.verbose = verbose;
 			this.debug = debug;
@@ -89,7 +89,7 @@ final class RestApiLoggerFactory {
 		private final Method debug;
 		private final Method info;
 
-		public R2Logger(Method verbose, Method debug, Method info) {
+		R2Logger(Method verbose, Method debug, Method info) {
 			this.verbose = verbose;
 			this.debug = debug;
 			this.info = info;

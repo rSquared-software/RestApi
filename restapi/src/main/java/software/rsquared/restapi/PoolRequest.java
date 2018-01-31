@@ -1,17 +1,17 @@
 package software.rsquared.restapi;
 
-import android.os.Handler;
-import android.os.Looper;
-import android.support.annotation.CallSuper;
+import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import software.rsquared.restapi.exceptions.RequestException;
 import software.rsquared.restapi.listeners.RequestListener;
-import software.rsquared.restapi.listeners.RequestPoolListener;
 
 /**
  * TODO Dokumentacja
@@ -19,59 +19,77 @@ import software.rsquared.restapi.listeners.RequestPoolListener;
  * @author Rafal Zajfert
  */
 @SuppressWarnings({"WeakerAccess", "UnusedReturnValue"})
-abstract class PoolRequest<P extends PoolRequest> {
+public abstract class PoolRequest {
+	public static final int THREAD_POOL_EXECUTOR = 1;
+	public static final int SERIAL_EXECUTOR = 2;
+
+	@IntDef({THREAD_POOL_EXECUTOR, SERIAL_EXECUTOR})
+	@Retention(RetentionPolicy.SOURCE)
+	public @interface PoolExecutor {
+	}
 
 	protected Map<Integer, Request> requestPool = new LinkedHashMap<>();
 
-	protected boolean executed;
+	protected AtomicBoolean executed = new AtomicBoolean(false);
 
-	protected RequestExecutor executor;
-
-	protected boolean cancelled;
+	protected AtomicBoolean cancelled = new AtomicBoolean(false);
 
 	@Nullable
-	private RequestPoolListener listener;
-	private Handler handler;
+	private software.rsquared.restapi.listeners.PoolRequestListener listener;
 
-	protected PoolRequest(int poolSize) {
-		executor = new RequestExecutor(poolSize, 0L);
+	protected RestApi api;
+
+	protected PoolRequest() {
 	}
 
-	public P addTask(@NonNull Request request, int requestCode) {
-		if (executed) {
+	public static PoolRequest create(@PoolExecutor int executor) {
+		switch (executor) {
+			case THREAD_POOL_EXECUTOR:
+				return new ThreadPoolRequest();
+			case SERIAL_EXECUTOR:
+			default:
+				return new SerialPoolRequest();
+		}
+	}
+
+	public PoolRequest addTask(@NonNull Request request, int requestCode) {
+		if (executed.get()) {
 			throw new IllegalStateException("New task cannot be added to the pool after executing.");
 		}
 		if (requestPool.containsKey(requestCode)) {
 			throw new IllegalArgumentException("Task with this requestCode (" + requestCode + ") was already added.");
 		}
 		requestPool.put(requestCode, request);
-		//noinspection unchecked
-		return (P) this;
+		return this;
 	}
 
-	@CallSuper
-	public void execute(@Nullable RequestPoolListener listener) {
-		this.listener = listener;
-		execute();
+	public void execute(RestApi api, @Nullable software.rsquared.restapi.listeners.PoolRequestListener listener) {
+		if (executed.compareAndSet(false, true)) {
+			this.api = api;
+			this.listener = listener;
+			execute();
+		} else {
+			throw new IllegalStateException("Already executed.");
+		}
 	}
 
-	public abstract void execute();
+	protected abstract void execute();
 
 	protected void onPreExecute() {
 		if (listener != null) {
-			getHandler().post(() -> listener.onPreExecute());
+			api.getUiExecutor().execute(() -> listener.onPreExecute());
 		}
 	}
 
 	protected void onTaskSuccess(Object result, int requestCode) {
 		if (listener != null) {
-			getHandler().post(() -> listener.onTaskSuccess(result, requestCode));
+			listener.onTaskSuccess(result, requestCode);
 		}
 	}
 
 	protected void onFailed(RequestException e, int requestCode) {
 		if (listener != null) {
-			getHandler().post(() -> listener.onFailed(e, requestCode));
+			api.getUiExecutor().execute(() -> listener.onFailed(e, requestCode));
 		}
 	}
 
@@ -81,42 +99,33 @@ abstract class PoolRequest<P extends PoolRequest> {
 
 	protected void onCanceled() {
 		if (listener != null) {
-			getHandler().post(() -> listener.onCanceled());
+			api.getUiExecutor().execute(() -> listener.onCanceled());
 		}
 	}
 
 	protected void onSuccess(Map<Integer, Object> results) {
 		if (listener != null) {
-			getHandler().post(() -> listener.onSuccess(results));
+			api.getUiExecutor().execute(() -> listener.onSuccess(results));
 		}
 	}
 
 	protected void onPostExecute() {
 		if (listener != null) {
-			getHandler().post(() -> listener.onPostExecute());
+			api.getUiExecutor().execute(() -> listener.onPostExecute());
 		}
 	}
 
 	public void cancel() {
-		stopExecute();
-	}
-
-	protected void stopExecute() {
-		executor.shutdownNow();
-	}
-
-	/**
-	 * Get handler for the main looper
-	 */
-	@NonNull
-	private Handler getHandler() {
-		if (handler == null) {
-			handler = new Handler(Looper.getMainLooper());
+		if (cancelled.compareAndSet(false, true)){
+			for (Request request : requestPool.values()) {
+				request.cancel();
+			}
+			onCanceled();
 		}
-		return handler;
 	}
 
-	abstract class PoolRequestListener implements RequestListener<Object> {
+
+	protected abstract class PoolRequestListener implements RequestListener<Object> {
 		private int requestCode;
 
 		public PoolRequestListener(int requestCode) {

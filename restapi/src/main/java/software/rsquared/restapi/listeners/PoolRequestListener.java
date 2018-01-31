@@ -14,7 +14,7 @@ import software.rsquared.restapi.exceptions.RequestException;
  *
  * @author Rafal Zajfert
  */
-public interface RequestPoolListener {
+public interface PoolRequestListener {
 
 	/**
 	 * this method will be invoked before all requests execution
@@ -26,7 +26,7 @@ public interface RequestPoolListener {
 	/**
 	 * Called when task successfully finished
 	 */
-	@MainThread
+	@WorkerThread
 	default void onTaskSuccess(Object result, int requestCode) {
 	}
 
@@ -44,13 +44,13 @@ public interface RequestPoolListener {
 	 * If you want to stop execution after failed, please override {@link #canContinueAfterFailed(RequestException, int)} method.
 	 */
 	@MainThread
-	boolean onFailed(RequestException e, int requestCode);
+	void onFailed(RequestException e, int requestCode);
 
 	/**
-	 * Returns true if all unfinished requests should be cancelled, false otherwise
+	 * Returns false if all unfinished requests should be cancelled, true otherwise
 	 */
 	@WorkerThread
-	default boolean canContinueAfterFailed(RequestException e, int requestCode){
+	default boolean canContinueAfterFailed(RequestException e, int requestCode) {
 		return true;
 	}
 

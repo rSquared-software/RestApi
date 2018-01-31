@@ -14,7 +14,5 @@ import software.rsquared.restapi.Parameter;
  */
 public interface Serializer {
 
-	<T> void serialize(@NonNull List<Parameter> parameters, @Nullable T object);
-
-	<T> void serialize(@NonNull List<Parameter> parameters, @NonNull String name, @Nullable T object);
+	void serialize(@NonNull List<Parameter> parameters, @NonNull String name, @Nullable Object object);
 }

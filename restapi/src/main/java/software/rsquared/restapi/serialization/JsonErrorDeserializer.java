@@ -1,7 +1,5 @@
 package software.rsquared.restapi.serialization;
 
-import android.support.annotation.NonNull;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.fasterxml.jackson.databind.module.SimpleModule;
@@ -33,14 +31,9 @@ public class JsonErrorDeserializer implements ErrorDeserializer {
 	}
 
 	@Override
-	public RequestException read(int responseCode, String content) throws IOException {
+	public RequestException deserialize(int responseCode, String content) throws IOException {
 		DefaultErrorResponse value = objectMapper.readerFor(config.errorClass).readValue(content);
 		return new RequestException(responseCode, value.getName(), value.getMessage(), value.getErrorCode(), value.getErrors());
-	}
-
-	@NonNull
-	private Class<DefaultErrorResponse> getErrorClass() {
-		return DefaultErrorResponse.class;
 	}
 
 	public static class Config {
