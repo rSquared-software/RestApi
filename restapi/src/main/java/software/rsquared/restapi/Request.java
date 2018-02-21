@@ -6,7 +6,6 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.WorkerThread;
 import android.text.TextUtils;
-import android.util.Log;
 import android.util.Pair;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -239,7 +238,7 @@ public abstract class Request<T> {
 				headerMap.putAll(headerFactory.getHeaders(this));
 			}
 			prepareRequest();
-			computeAuthenticator(api.getRequestAuthenticator());
+			computeAuthenticator();
 			buildUrl();
 			if (!cancelled.get()) {
 				httpClient = createHttpClient();
@@ -270,10 +269,14 @@ public abstract class Request<T> {
 		}
 	}
 
-	protected void computeAuthenticator(RequestAuthenticator authenticator) {
-		if (!isAuthorizable() || authenticator == null) {
+	protected void computeAuthenticator() {
+		final RequestAuthenticator authenticator = api.getRequestAuthenticator();
+		if (authenticator == null || !authenticator.isAuthorizable(this)) {
 			return;
 		}
+
+		authenticator.checkAndAdd(this);
+
 		for (Pair<String, Object> pair : authenticator.getQueryParameters()) {
 			if (pair.first == null) {
 				putQueryParameter(pair.second);
@@ -381,7 +384,7 @@ public abstract class Request<T> {
 	}
 
 	/**
-	 * Set api method url based on {@link RestApiConfiguration}
+	 * Set api method url
 	 *
 	 * @param segments path segments e.g: <p>
 	 *                 for address http://example.com/get/user  this method should be invoked: {@code addPathSegments("get", "user");}

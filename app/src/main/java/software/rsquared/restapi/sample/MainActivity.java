@@ -10,6 +10,8 @@ import java.util.Calendar;
 import java.util.concurrent.Executors;
 
 import software.rsquared.AnotherAppClass;
+import software.rsquared.restapi.Request;
+import software.rsquared.restapi.RequestAuthenticator;
 import software.rsquared.restapi.RestApi;
 
 public class MainActivity extends AppCompatActivity {
@@ -48,7 +50,35 @@ public class MainActivity extends AppCompatActivity {
 
 		RestApi restApi = new RestApi.Builder("http://w-api.ioio.software")
 				.setNetworkExecutor(Executors.newFixedThreadPool(10))
+				.setRequestAuthenticator(new RequestAuthenticator() {
+
+					@Override
+					protected void checkAuthorization(Request request) {
+
+					}
+
+					@Override
+					protected void addAuthorization() {
+
+					}
+
+				})
 				.build();
+
+
+
+
+//		LiveData<ApiResource<Version>> liveData = liveRestApi.execute(new AnotherAppClass.GetVersion());
+
+
+
+
+
+
+
+
+
+
 
 		AnotherAppClass.getVersion(restApi);
 

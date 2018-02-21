@@ -8,8 +8,8 @@ package software.rsquared.restapi;
 @SuppressWarnings("unused")
 public class Parameter {
 
-	public static final String FILE_PREFIX = "__file";
-	private static final String FILE_REGEX = "^" + FILE_PREFIX + "\\{(.+)\\}$";
+	public static final String FILE_PREFIX= "__file";
+	public static final String FILE_REGEX = "^__file\\{(.+)\\}$";
 
 	private String name;
 

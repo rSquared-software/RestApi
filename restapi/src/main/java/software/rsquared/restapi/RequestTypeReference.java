@@ -13,7 +13,7 @@ class RequestTypeReference<T> extends TypeReference<T> {
 
 	RequestTypeReference(Request<T> request) {
 		Type superClass = request.getClass().getGenericSuperclass();
-		if (superClass instanceof Class<?>) { // sanity check, should never happen
+		if (superClass instanceof Class<?>) { // sanity checkAndAdd, should never happen
 			throw new IllegalArgumentException("Internal error: TypeReference constructed without actual type information");
 		}
 		requestType = ((ParameterizedType) superClass).getActualTypeArguments()[0];

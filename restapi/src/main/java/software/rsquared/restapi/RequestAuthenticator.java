@@ -16,6 +16,28 @@ public abstract class RequestAuthenticator {
 	private final List<Pair<String, Object>> queryParameters = new ArrayList<>();
 	private final List<Pair<String, String>> headers = new ArrayList<>();
 
+	public RequestAuthenticator() {
+
+	}
+
+	protected boolean isAuthorizable(Request request) {
+		return request instanceof Authorizable;
+	}
+
+	synchronized void checkAndAdd(Request request) {
+		checkAuthorization(request);
+		clean();
+		addAuthorization();
+	}
+
+	private void clean() {
+		parameters.clear();
+		queryParameters.clear();
+		headers.clear();
+	}
+
+	protected abstract void checkAuthorization(Request request);
+
 	protected abstract void addAuthorization();
 
 	/**

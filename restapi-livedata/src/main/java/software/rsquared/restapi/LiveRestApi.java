@@ -1,6 +1,6 @@
 package software.rsquared.restapi;
 
-import android.support.annotation.AnyThread;
+import android.arch.lifecycle.LiveData;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.WorkerThread;
@@ -12,7 +12,6 @@ import java.util.Set;
 import java.util.concurrent.Executor;
 
 import software.rsquared.restapi.exceptions.RequestException;
-import software.rsquared.restapi.listeners.PoolRequestListener;
 import software.rsquared.restapi.listeners.RequestListener;
 import software.rsquared.restapi.serialization.Deserializer;
 import software.rsquared.restapi.serialization.ErrorDeserializer;
@@ -26,165 +25,100 @@ import software.rsquared.restapi.serialization.Serializer;
  *
  * @author Rafał Zajfert
  */
-public class RestApi {
+public class LiveRestApi {
 
-	static final MainThreadExecutor DEFAULT_MAIN_THREAD_EXECUTOR = new MainThreadExecutor();
+	final RestApi api;
 
-	private final long timeout;
-
-	@NonNull
-	private final String url;
-
-	@Nullable
-	private final BasicAuth basicAuth;
-
-	private final boolean enableTls12OnPreLollipop;
-
-	@Nullable
-	private final Executor networkExecutor;
-
-	@NonNull
-	private final Executor uiExecutor;
-
-	@NonNull
-	private final ErrorDeserializer errorDeserializer;
-
-	@NonNull
-	private final Deserializer deserializer;
-
-	@NonNull
-	private final Serializer serializer;
-
-	@NonNull
-	private final List<Checker> checkerList;
-
-	@Nullable
-	private final RequestAuthenticator requestAuthenticator;
-
-	@Nullable
-	private final MockFactory mockFactory;
-
-	@Nullable
-	private final HeaderFactory headerFactory;
-
-	@NonNull
-	private final RestApiLogger logger;
-
-	@NonNull
-	private final Set<Integer> successStatusCodes;
-
-	RestApi(long timeout, @NonNull String url, @Nullable BasicAuth basicAuth,
-					boolean enableTls12OnPreLollipop, @Nullable Executor networkExecutor,
-					@NonNull Executor uiExecutor, @NonNull ErrorDeserializer errorDeserializer,
-					@NonNull Deserializer deserializer, @NonNull Serializer serializer,
-					@NonNull List<Checker> checkerList, @Nullable RequestAuthenticator requestAuthenticator,
-					@Nullable MockFactory mockFactory, @Nullable HeaderFactory headerFactory,
-					@NonNull RestApiLogger logger, @NonNull Set<Integer> successStatusCodes) {
-		this.timeout = timeout;
-		this.url = url;
-		this.basicAuth = basicAuth;
-		this.enableTls12OnPreLollipop = enableTls12OnPreLollipop;
-		this.networkExecutor = networkExecutor;
-		this.uiExecutor = uiExecutor;
-		this.errorDeserializer = errorDeserializer;
-		this.deserializer = deserializer;
-		this.serializer = serializer;
-		this.checkerList = checkerList;
-		this.requestAuthenticator = requestAuthenticator;
-		this.mockFactory = mockFactory;
-		this.headerFactory = headerFactory;
-		this.logger = logger;
-		this.successStatusCodes = successStatusCodes;
+	LiveRestApi(RestApi api) {
+		this.api = api;
 	}
 
-	@AnyThread
-	public <E> void execute(@NonNull Request<E> request, @Nullable RequestListener<E> listener) {
-		request.execute(this, listener);
+	@NonNull
+	public <T> LiveData<ApiResource<T>> execute(@NonNull Request<T> request) {
+		ApiResourceLiveData<T> liveData = new ApiResourceLiveData<>();
+		request.execute(api, new RequestListener<T>() {
+
+			@Override
+			public void onPreExecute() {
+				liveData.setValue(ApiResource.loading());
+			}
+
+			@Override
+			public void onSuccess(T result) {
+				liveData.setValue(ApiResource.success(result));
+
+			}
+
+			@Override
+			public void onFailed(RequestException e) {
+				liveData.setValue(ApiResource.fail(e));
+			}
+
+			@Override
+			public void onPostExecute() {
+
+			}
+
+			@Override
+			public void onCanceled() {
+				liveData.setValue(ApiResource.cancel());
+
+			}
+		});
+		return liveData;
 	}
 
-	@AnyThread
-	public void execute(@NonNull PoolRequest request, @Nullable PoolRequestListener listener) {
-		request.execute(this, listener);
+	@NonNull
+	public <T> LiveData<ApiResource<T>> execute(@NonNull Request<T> request, RequestListener<T> listener) {
+		ApiResourceLiveData<T> liveData = new ApiResourceLiveData<>();
+		request.execute(api, new RequestListener<T>() {
+
+			@Override
+			public void onPreExecute() {
+				liveData.setValue(ApiResource.loading());
+				if (listener != null) {
+					listener.onPreExecute();
+				}
+			}
+
+			@Override
+			public void onSuccess(T result) {
+				liveData.setValue(ApiResource.success(result));
+				if (listener != null) {
+					listener.onSuccess(result);
+				}
+			}
+
+			@Override
+			public void onFailed(RequestException e) {
+				liveData.setValue(ApiResource.fail(e));
+				if (listener != null) {
+					listener.onFailed(e);
+				}
+			}
+
+			@Override
+			public void onPostExecute() {
+				if (listener != null) {
+					listener.onPostExecute();
+				}
+			}
+
+			@Override
+			public void onCanceled() {
+				liveData.setValue(ApiResource.cancel());
+				if (listener != null) {
+					listener.onCanceled();
+				}
+			}
+		});
+		return liveData;
 	}
 
 	@WorkerThread
 	public <E> E executeSync(@NonNull Request<E> request) throws RequestException {
-		return request.executeSync(this);
+		return request.executeSync(api);
 	}
-
-	@NonNull
-	Executor getUiExecutor() {
-		return uiExecutor;
-	}
-
-	@Nullable
-	Executor getNetworkExecutor() {
-		return networkExecutor;
-	}
-
-	@NonNull
-	String getUrl() {
-		return url;
-	}
-
-	@Nullable
-	RequestAuthenticator getRequestAuthenticator() {
-		return requestAuthenticator;
-	}
-
-	@NonNull
-	RestApiLogger getLogger() {
-		return logger;
-	}
-
-	@NonNull
-	Set<Integer> getSuccessStatusCodes() {
-		return successStatusCodes;
-	}
-
-	long getTimeout() {
-		return timeout;
-	}
-
-	@Nullable
-	BasicAuth getBasicAuth() {
-		return basicAuth;
-	}
-
-	@NonNull
-	ErrorDeserializer getErrorDeserializer() {
-		return errorDeserializer;
-	}
-
-	@NonNull
-	Deserializer getDeserializer() {
-		return deserializer;
-	}
-
-	@NonNull
-	Serializer getSerializer() {
-		return serializer;
-	}
-
-	@Nullable
-	MockFactory getMockFactory() {
-		return mockFactory;
-	}
-
-	boolean isEnableTls12OnPreLollipop() {
-		return enableTls12OnPreLollipop;
-	}
-
-	@Nullable
-	HeaderFactory getHeaderFactory() {
-		return headerFactory;
-	}
-
-	@NonNull
-	List<Checker> getCheckerList() {
-		return checkerList;
-	}
-
 
 	public static class Builder {
 
@@ -221,11 +155,6 @@ public class RestApi {
 		public Builder(@NonNull String url) {
 			this.url = url;
 			this.successStatusCodes.add(200);
-		}
-
-		public Builder setUrl(@NonNull String url) {
-			this.url = url;
-			return this;
 		}
 
 		public Builder setTimeout(long timeout) {
@@ -300,10 +229,10 @@ public class RestApi {
 			return this;
 		}
 
-		public RestApi build() {
+		public LiveRestApi build() {
 			Executor uiExecutor = this.uiExecutor;
 			if (uiExecutor == null) {
-				uiExecutor = DEFAULT_MAIN_THREAD_EXECUTOR;
+				uiExecutor = RestApi.DEFAULT_MAIN_THREAD_EXECUTOR;
 			}
 			ErrorDeserializer errorDeserializer = this.errorDeserializer;
 			if (errorDeserializer == null) {
@@ -323,9 +252,9 @@ public class RestApi {
 			}
 
 
-			return new RestApi(timeout, url, basicAuth, enableTls12OnPreLollipop, networkExecutor,
+			return new LiveRestApi(new RestApi(timeout, url, basicAuth, enableTls12OnPreLollipop, networkExecutor,
 					uiExecutor, errorDeserializer, deserializer, serializer, checkerList,
-					requestAuthenticator, mockFactory, headerFactory, logger, successStatusCodes);
+					requestAuthenticator, mockFactory, headerFactory, logger, successStatusCodes));
 		}
 
 	}

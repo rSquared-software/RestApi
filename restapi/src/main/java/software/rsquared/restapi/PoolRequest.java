@@ -63,7 +63,7 @@ public abstract class PoolRequest {
 		return this;
 	}
 
-	public void execute(RestApi api, @Nullable software.rsquared.restapi.listeners.PoolRequestListener listener) {
+	protected void execute(RestApi api, @Nullable software.rsquared.restapi.listeners.PoolRequestListener listener) {
 		if (executed.compareAndSet(false, true)) {
 			this.api = api;
 			this.listener = listener;
