@@ -34,7 +34,7 @@ public class AnotherAppClass {
 //		});
 
 		api.execute(PoolRequest.create(PoolRequest.THREAD_POOL_EXECUTOR)
-						.addTask(new GetVersion(), 1)
+						.addTask(new GetVersion("zzz"), 1)
 						.addTask(new GetVersion(), 2),
 				new PoolRequestListener() {
 					@Override
@@ -47,7 +47,7 @@ public class AnotherAppClass {
 
 					@Override
 					public void onFailed(RequestException e, int requestCode) {
-						Logger.debug("onFailed() called with: e = [" + e + "], requestCode = [" + requestCode + "]");
+						Logger.warning("onFailed() called with: e = [" + e + "], requestCode = [" + requestCode + "]");
 					}
 
 					@Override
@@ -59,9 +59,19 @@ public class AnotherAppClass {
 
 	public static class GetVersion extends PostRequest<MainActivity.Version> {
 
+		private String a;
+
+		public GetVersion() {
+			a = "";
+		}
+
+		public GetVersion(String a) {
+			this.a = a;
+		}
+
 		@Override
 		protected void prepareRequest() {
-			addPathSegments("api", "version");
+			addPathSegments("api", "version", a);
 			putQueryParameter("param1", "value1");
 			putParameter("param2", "value2");
 //			putParameter("asd");

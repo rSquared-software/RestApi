@@ -10,6 +10,7 @@ import java.util.Calendar;
 import java.util.concurrent.Executors;
 
 import software.rsquared.AnotherAppClass;
+import software.rsquared.androidlogger.Logger;
 import software.rsquared.restapi.Request;
 import software.rsquared.restapi.RequestAuthenticator;
 import software.rsquared.restapi.RestApi;
@@ -50,6 +51,10 @@ public class MainActivity extends AppCompatActivity {
 
 		RestApi restApi = new RestApi.Builder("http://w-api.ioio.software")
 				.setNetworkExecutor(Executors.newFixedThreadPool(10))
+				.setErrorCallback((request, e) -> {
+					Logger.error("ERROR CALLBACK", request.getClass().getSimpleName(), e.getMessage());
+					return false;
+				})
 				.setRequestAuthenticator(new RequestAuthenticator() {
 
 					@Override
@@ -66,18 +71,7 @@ public class MainActivity extends AppCompatActivity {
 				.build();
 
 
-
-
 //		LiveData<ApiResource<Version>> liveData = liveRestApi.execute(new AnotherAppClass.GetVersion());
-
-
-
-
-
-
-
-
-
 
 
 		AnotherAppClass.getVersion(restApi);
@@ -165,7 +159,7 @@ public class MainActivity extends AppCompatActivity {
 	public static class ApiVersion {
 		@JsonProperty("api_version")
 		private String apiVersion;
-		@JsonProperty("expiration_date")
+		@JsonProperty("expiration_date_")
 		private Calendar expirationDate;
 
 		@Override

@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.concurrent.Executor;
 
 import software.rsquared.restapi.exceptions.RequestException;
+import software.rsquared.restapi.listeners.ErrorCallback;
 import software.rsquared.restapi.listeners.PoolRequestListener;
 import software.rsquared.restapi.listeners.RequestListener;
 import software.rsquared.restapi.serialization.Deserializer;
@@ -73,13 +74,16 @@ public class RestApi {
 	@NonNull
 	private final Set<Integer> successStatusCodes;
 
+	@Nullable
+	private final ErrorCallback errorCallback;
+
 	RestApi(long timeout, @NonNull String url, @Nullable BasicAuth basicAuth,
-					boolean enableTls12OnPreLollipop, @Nullable Executor networkExecutor,
-					@NonNull Executor uiExecutor, @NonNull ErrorDeserializer errorDeserializer,
-					@NonNull Deserializer deserializer, @NonNull Serializer serializer,
-					@NonNull List<Checker> checkerList, @Nullable RequestAuthenticator requestAuthenticator,
-					@Nullable MockFactory mockFactory, @Nullable HeaderFactory headerFactory,
-					@NonNull RestApiLogger logger, @NonNull Set<Integer> successStatusCodes) {
+	        boolean enableTls12OnPreLollipop, @Nullable Executor networkExecutor,
+	        @NonNull Executor uiExecutor, @NonNull ErrorDeserializer errorDeserializer,
+	        @NonNull Deserializer deserializer, @NonNull Serializer serializer,
+	        @NonNull List<Checker> checkerList, @Nullable RequestAuthenticator requestAuthenticator,
+	        @Nullable MockFactory mockFactory, @Nullable HeaderFactory headerFactory,
+	        @NonNull RestApiLogger logger, @NonNull Set<Integer> successStatusCodes, @Nullable ErrorCallback errorCallback) {
 		this.timeout = timeout;
 		this.url = url;
 		this.basicAuth = basicAuth;
@@ -95,6 +99,7 @@ public class RestApi {
 		this.headerFactory = headerFactory;
 		this.logger = logger;
 		this.successStatusCodes = successStatusCodes;
+		this.errorCallback = errorCallback;
 	}
 
 	@AnyThread
@@ -185,6 +190,10 @@ public class RestApi {
 		return checkerList;
 	}
 
+	@Nullable
+	public ErrorCallback getErrorCallback() {
+		return errorCallback;
+	}
 
 	public static class Builder {
 
@@ -216,6 +225,8 @@ public class RestApi {
 		private RestApiLogger logger;
 		@NonNull
 		private Set<Integer> successStatusCodes = new LinkedHashSet<>();
+		@Nullable
+		private ErrorCallback errorCallback;
 
 
 		public Builder(@NonNull String url) {
@@ -300,6 +311,11 @@ public class RestApi {
 			return this;
 		}
 
+		public Builder setErrorCallback(@Nullable ErrorCallback errorCallback) {
+			this.errorCallback = errorCallback;
+			return this;
+		}
+
 		public RestApi build() {
 			Executor uiExecutor = this.uiExecutor;
 			if (uiExecutor == null) {
@@ -325,7 +341,7 @@ public class RestApi {
 
 			return new RestApi(timeout, url, basicAuth, enableTls12OnPreLollipop, networkExecutor,
 					uiExecutor, errorDeserializer, deserializer, serializer, checkerList,
-					requestAuthenticator, mockFactory, headerFactory, logger, successStatusCodes);
+					requestAuthenticator, mockFactory, headerFactory, logger, successStatusCodes, errorCallback);
 		}
 
 	}

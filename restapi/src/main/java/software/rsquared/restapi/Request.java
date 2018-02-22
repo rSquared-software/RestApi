@@ -35,6 +35,7 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import software.rsquared.restapi.exceptions.RequestException;
+import software.rsquared.restapi.listeners.ErrorCallback;
 import software.rsquared.restapi.listeners.RequestListener;
 import software.rsquared.restapi.serialization.Deserializer;
 import software.rsquared.restapi.serialization.ErrorDeserializer;
@@ -196,6 +197,11 @@ public abstract class Request<T> {
 
 			@Override
 			protected void onFailed(RequestException e) {
+				ErrorCallback errorCallback = api.getErrorCallback();
+				if (errorCallback != null && errorCallback.onError(Request.this, e)) {
+					return;
+				}
+
 				Executor uiExecutor = api.getUiExecutor();
 				if (listener != null) {
 					uiExecutor.execute(() -> listener.onFailed(e));
