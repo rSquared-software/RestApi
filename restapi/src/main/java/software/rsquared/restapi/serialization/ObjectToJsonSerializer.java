@@ -32,8 +32,9 @@ import software.rsquared.restapi.exceptions.SerializationException;
  * @author Rafal Zajfert
  */
 public class ObjectToJsonSerializer implements JsonSerializer {
-	private final ObjectMapper objectMapper;
-	private final Config config;
+
+	protected final ObjectMapper objectMapper;
+	protected final Config config;
 
 	public ObjectToJsonSerializer() {
 		this(new Config());

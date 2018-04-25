@@ -16,8 +16,8 @@ import software.rsquared.restapi.exceptions.RequestException;
  */
 public class JsonErrorDeserializer implements ErrorDeserializer {
 
-	private final ObjectMapper objectMapper = new ObjectMapper();
-	private final Config config;
+	protected final ObjectMapper objectMapper = new ObjectMapper();
+	protected final Config config;
 
 	public JsonErrorDeserializer() {
 		this(new Config());

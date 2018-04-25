@@ -28,8 +28,9 @@ import software.rsquared.restapi.Parameter;
  * @author Rafal Zajfert
  */
 public class ObjectToFormSerializer implements Serializer {
-	private final ObjectMapper objectMapper;
-	private final Config config;
+
+	protected final ObjectMapper objectMapper;
+	protected final Config config;
 
 	public ObjectToFormSerializer() {
 		this(new Config());
