@@ -1,5 +1,4 @@
 apply plugin: 'com.android.library'
-apply plugin: 'com.novoda.bintray-release'
 
 android {
     compileSdkVersion 27
@@ -37,19 +36,4 @@ dependencies {
     implementation 'com.android.support:support-annotations:27.0.2'
     compile 'com.fasterxml.jackson.core:jackson-databind:2.9.3'
     compile 'com.squareup.okhttp3:okhttp:3.9.1'
-}
-
-Properties properties = new Properties()
-properties.load(project.rootProject.file('local.properties').newDataInputStream())
-
-//gradlew clean build bintrayUpload -PdryRun=false
-publish {
-    userOrg = 'rsquared'
-    groupId = 'software.rsquared'
-    artifactId = 'rest-api'
-    publishVersion = '1.2.3'
-    desc = 'Library to simplify android rest api connecton'
-    website = 'https://github.com/rSquared-software/RestApi'
-    bintrayUser = properties.getProperty("bintray.oss.user")
-    bintrayKey = properties.getProperty("bintray.apikey")
 }
