@@ -35,10 +35,10 @@ afterEvaluate {
     publishing {
         publications {
             release(MavenPublication) {
-                from components.release
+                from components.findByName('release')
                 groupId = 'com.github.rSquared-software'
                 artifactId = 'RestApi'
-                version = '1.2.5'
+                version = '1.2.6'
             }
         }
     }
